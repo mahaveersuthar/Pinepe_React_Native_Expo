@@ -1,0 +1,53 @@
+{
+  "cli": {
+    "version": ">= 5.9.3",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      }
+    },
+
+    /* --- White Label Tenant Profiles --- */
+
+    "klj": {
+      "extends": "production",
+      "env": {
+        "TENANT_ID": "KLJPAPINP001"
+      }
+    },
+    "laxmeepay": {
+      "extends": "production",
+      "env": {
+        "TENANT_ID": "LAXMEPINP001"
+      }
+    },
+    "divanshu": {
+      "extends": "production",
+      "env": {
+        "TENANT_ID": "90f55330-b4ec-4220-a59a-d4c1a459c0a5"
+      }
+    },
+    "pinepe": {
+      "extends": "production",
+      "env": {
+        "TENANT_ID": "95c1fbeb-388c-44f4-88a9-dd4148f1df3c"
+      }
+    },
+    "nkpay": {
+      "extends": "production",
+      "env": {
+        "TENANT_ID": "daccd57e-c327-43cf-9f90-db7d72325454"
+      }
+    }
+  }
+}

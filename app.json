@@ -11,14 +11,56 @@
     "ios": {
       "supportsTablet": true
     },
+    "android": {
+      "package": "com.mohit100201.boltexponativewind"
+    },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.png"
     },
-    "plugins": ["expo-router", "expo-font", "expo-web-browser"],
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser"
+    ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "tenantUniqueId": "daccd57e-c327-43cf-9f90-db7d72325454",
+      "eas": {
+        "projectId": "3d149857-ae73-4ed1-a34d-12a0018a87c8"
+      },
+      "tenantData": {
+        "id": 28,
+        "unique_id": "LAXMEPINP001",
+        "name": "Laxmeepay",
+        "email": "info@laxmeepay.com",
+        "email_verified_at": {},
+        "phone": "7900926726",
+        "role": "whitelabel",
+        "plan_id": {},
+        "parent_id": 1,
+        "parent_type": "superadmin",
+        "domain": "laxmeepay.com",
+        "photo": "https://api.pinepe.in/storage/photos/R8ogDUtNhZVNRLRWGmfLhQmLVk0tMtopx57H4KBH.png",
+        "is_blocked": false,
+        "is_suspended": false,
+        "notes": {},
+        "aadhar_front": {},
+        "aadhar_back": {},
+        "pan": {},
+        "state": "Rajasthan",
+        "city": "Jaipur",
+        "address": "hgfs",
+        "wallet_balance": "0.00",
+        "wallet_hold": "0.00",
+        "wallet_status": "active",
+        "created_at": "2025-12-13T10:03:29.000000Z",
+        "updated_at": "2025-12-17T08:07:08.000000Z"
+      }
     }
   }
 }

@@ -7,7 +7,19 @@
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
     "build:web": "expo export --platform web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:klj": "cross-env TENANT_ID=KLJPAPINP001 node ./scripts/fetch-tenant.js && expo start",
+    "dev:laxmeepay": "cross-env TENANT_ID=LAXMEPINP001 node ./scripts/fetch-tenant.js && expo start",
+    "dev:divanshu": "cross-env TENANT_ID=90f55330-b4ec-4220-a59a-d4c1a459c0a5 node ./scripts/fetch-tenant.js && expo start",
+    "dev:pinepe": "cross-env TENANT_ID=95c1fbeb-388c-44f4-88a9-dd4148f1df3c node ./scripts/fetch-tenant.js && expo start",
+    "dev:nkpay": "cross-env TENANT_ID=daccd57e-c327-43cf-9f90-db7d72325454 node ./scripts/fetch-tenant.js && expo start",
+    "build:klj": "cross-env TENANT_ID=KLJPAPINP001 node ./scripts/fetch-tenant.js && eas build --profile klj --platform android",
+    "build:laxmeepay": "cross-env TENANT_ID=LAXMEPINP001 node ./scripts/fetch-tenant.js && eas build --profile laxmeepay --platform android",
+    "build:divanshu": "cross-env TENANT_ID=90f55330-b4ec-4220-a59a-d4c1a459c0a5 node ./scripts/fetch-tenant.js && eas build --profile divanshu --platform android",
+    "build:pinepe": "cross-env TENANT_ID=95c1fbeb-388c-44f4-88a9-dd4148f1df3c node ./scripts/fetch-tenant.js && eas build --profile pinepe --platform android",
+    "build:nkpay": "cross-env TENANT_ID=daccd57e-c327-43cf-9f90-db7d72325454 node ./scripts/fetch-tenant.js && eas build --profile nkpay --platform android",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -15,6 +27,7 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@supabase/supabase-js": "^2.58.0",
+    "axios": "^1.13.2",
     "expo": "^54.0.10",
     "expo-blur": "~15.0.7",
     "expo-camera": "~17.0.8",
@@ -33,20 +46,22 @@
     "lucide-react-native": "^0.544.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-native": "0.81.4",
+    "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-svg": "^15.12.1",
+    "react-native-svg": "15.12.1",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.21.0",
-    "react-native-webview": "13.15.0"
-    
+    "react-native-webview": "13.15.0",
+    "react-native-worklets": "0.5.1",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~19.1.10",
+    "cross-env": "^10.1.0",
     "typescript": "~5.9.2"
   }
 }
