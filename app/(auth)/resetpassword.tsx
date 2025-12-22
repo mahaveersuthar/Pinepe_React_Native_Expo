@@ -12,13 +12,13 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
+import Toast from 'react-native-toast-message'; // 1. Import Toast
 import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import Constants from 'expo-constants';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
 
-// Get window height for full-screen centering
 const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 
 export default function ResetPasswordScreen() {
@@ -30,19 +30,25 @@ export default function ResetPasswordScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
 
     const tenantData = Constants.expoConfig?.extra?.tenantData;
     const domainName = tenantData?.domain || "laxmeepay.com";
 
     const handleResetPassword = async () => {
-        setError('');
         if (!password || !confirmPassword) {
-            setError('Please fill all fields');
+            Toast.show({
+                type: 'error',
+                text1: 'Required',
+                text2: 'Please fill all fields',
+            });
             return;
         }
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            Toast.show({
+                type: 'error',
+                text1: 'Mismatch',
+                text2: 'Passwords do not match',
+            });
             return;
         }
 
@@ -65,99 +71,103 @@ export default function ResetPasswordScreen() {
 
             const json = await response.json();
             if (json.success) {
+                // 2. Show success toast before redirect
+                Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: 'Password reset successfully. Please login.',
+                });
                 router.replace('/(auth)/login');
             } else {
-                setError(json.message || 'Reset failed. Please try again.');
+                Toast.show({
+                    type: 'error',
+                    text1: 'Reset Failed',
+                    text2: json.message || 'Please try again.',
+                });
             }
         } catch (err) {
-            setError('Connection error. Please try again.');
+            Toast.show({
+                type: 'error',
+                text1: 'Connection Error',
+                text2: 'Please check your internet connection.',
+            });
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <View style={{flex:1,backgroundColor:'white'}}>
+        <View style={{flex:1, backgroundColor:'white'}}>
             <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
-        >
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.container}
             >
-                {/* Logo Section */}
-                <View style={styles.logoContainer}>
-                    <BrandedLogo size={120} />
-                </View>
-
-                {/* Header Section */}
-                <View style={styles.header}>
-                    <Text style={styles.title}>Set New Password</Text>
-                    <Text style={styles.subtitle}>
-                        Create a strong, unique password for your account.
-                    </Text>
-                </View>
-
-                {/* Card Section */}
-                <View style={styles.formCard}>
-                    <View style={styles.inputWrapper}>
-                        <AnimatedInput
-                            label="Password"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry={!showPassword}
-                        />
-                        <Pressable
-                            style={styles.eyeIconContainer}
-                            onPress={() => setShowPassword(!showPassword)}
-                        >
-                            {showPassword ? (
-                                <EyeOff size={20} color={theme.colors.text.secondary} />
-                            ) : (
-                                <Eye size={20} color={theme.colors.text.secondary} />
-                            )}
-                        </Pressable>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View style={styles.logoContainer}>
+                        <BrandedLogo size={120} />
                     </View>
 
-                    <View style={styles.inputWrapper}>
-                        <AnimatedInput
-                            label="Confirm Password"
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            secureTextEntry={!showConfirmPassword}
-                        />
-                        <Pressable
-                            style={styles.eyeIconContainer}
-                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                            {showConfirmPassword ? (
-                                <EyeOff size={20} color={theme.colors.text.secondary} />
-                            ) : (
-                                <Eye size={20} color={theme.colors.text.secondary} />
-                            )}
-                        </Pressable>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>Set New Password</Text>
+                        <Text style={styles.subtitle}>
+                            Create a strong, unique password for your account.
+                        </Text>
                     </View>
 
-                    {error ? (
-                        <View style={styles.errorContainer}>
-                            <Text style={styles.errorText}>Error:</Text>
-                            <Text style={styles.errorMessage}>{error}</Text>
+                    <View style={styles.formCard}>
+                        <View style={styles.inputWrapper}>
+                            <AnimatedInput
+                                label="Password"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                            />
+                            <Pressable
+                                style={styles.eyeIconContainer}
+                                onPress={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? (
+                                    <EyeOff size={20} color={theme.colors.text.secondary} />
+                                ) : (
+                                    <Eye size={20} color={theme.colors.text.secondary} />
+                                )}
+                            </Pressable>
                         </View>
-                    ) : null}
 
-                    <AnimatedButton
-                        title="Reset Password"
-                        onPress={handleResetPassword}
-                        variant="primary"
-                        size="large"
-                        loading={loading}
-                        style={styles.resetButton}
-                    />
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                        <View style={styles.inputWrapper}>
+                            <AnimatedInput
+                                label="Confirm Password"
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                secureTextEntry={!showConfirmPassword}
+                            />
+                            <Pressable
+                                style={styles.eyeIconContainer}
+                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                                {showConfirmPassword ? (
+                                    <EyeOff size={20} color={theme.colors.text.secondary} />
+                                ) : (
+                                    <Eye size={20} color={theme.colors.text.secondary} />
+                                )}
+                            </Pressable>
+                        </View>
+
+                        <AnimatedButton
+                            title="Reset Password"
+                            onPress={handleResetPassword}
+                            variant="primary"
+                            size="large"
+                            loading={loading}
+                            style={styles.resetButton}
+                        />
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </View>
     );
 }
@@ -168,11 +178,10 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.background.light,
     },
     scrollContent: {
-        flexGrow: 1, // Allows content to fill space
-        justifyContent: 'center', // Centers content vertically
+        flexGrow: 1,
+        justifyContent: 'center',
         paddingHorizontal: theme.spacing[6],
         paddingBottom: theme.spacing[8],
-        // Ensures the scrollview background covers the full screen
         minHeight: WINDOW_HEIGHT - (StatusBar.currentHeight || 0),
     },
     logoContainer: {
@@ -206,7 +215,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 10,
         elevation: 3,
-        width: '100%', // Ensure card stays full width within padding
+        width: '100%',
     },
     inputWrapper: {
         position: 'relative',
@@ -217,25 +226,6 @@ const styles = StyleSheet.create({
         right: 15,
         top: 15,
         justifyContent: 'center',
-       
-    },
-    errorContainer: {
-        backgroundColor: '#FFF5F5',
-        padding: 10,
-        borderRadius: 8,
-        marginBottom: theme.spacing[4],
-        borderLeftWidth: 4,
-        borderLeftColor: theme.colors.error[500],
-    },
-    errorText: {
-        fontSize: theme.typography.fontSizes.xs,
-        fontWeight: 'bold',
-        color: theme.colors.error[500],
-        textTransform: 'uppercase',
-    },
-    errorMessage: {
-        fontSize: theme.typography.fontSizes.sm,
-        color: theme.colors.text.secondary,
     },
     resetButton: {
         marginTop: theme.spacing[2],

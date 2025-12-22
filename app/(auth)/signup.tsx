@@ -8,17 +8,16 @@ import {
   KeyboardAvoidingView, 
   Platform,
   Dimensions,
-  StatusBar,
-  ActivityIndicator
+  StatusBar
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, ChevronDown } from 'lucide-react-native';
+import Toast from 'react-native-toast-message'; // 1. Import Toast
 import Constants from 'expo-constants';
 import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 
@@ -44,28 +43,37 @@ export default function SignupScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   // Domain configuration
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
 
   const handleSignup = async () => {
-    setError('');
-
-    // Basic Validation
+    // 2. Basic Validation with Toasts
     if (!role || !fullName || !email || !phone || !password || !passwordConfirmation) {
-      setError('Please fill all fields');
+      Toast.show({
+        type: 'error',
+        text1: 'Required Fields',
+        text2: 'Please fill all details to continue',
+      });
       return;
     }
 
     if (password !== passwordConfirmation) {
-      setError('Passwords do not match');
+      Toast.show({
+        type: 'error',
+        text1: 'Password Mismatch',
+        text2: 'Confirm password does not match',
+      });
       return;
     }
 
     if (phone.length < 10) {
-      setError('Please enter a valid phone number');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Phone',
+        text2: 'Please enter a valid 10-digit number',
+      });
       return;
     }
 
@@ -92,6 +100,13 @@ export default function SignupScreen() {
       const json = await response.json();
 
       if (json.success) {
+        // 3. Success Toast
+        Toast.show({
+          type: 'success',
+          text1: 'Account Created',
+          text2: 'Please verify your email to continue',
+        });
+
         router.replace({
           pathname: '/(auth)/otp',
           params: { 
@@ -100,18 +115,26 @@ export default function SignupScreen() {
           }
         });
       } else {
-        setError(json.message || 'Signup failed. Please check your details.');
+        // 4. API Error Toast
+        Toast.show({
+          type: 'error',
+          text1: 'Signup Failed',
+          text2: json.message || 'Check your details and try again',
+        });
       }
     } catch (err) {
-      setError('Connection error. Please check your internet and try again.');
-      console.error("Signup Error:", err);
+      Toast.show({
+        type: 'error',
+        text1: 'Network Error',
+        text2: 'Please check your connection and try again',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={[styles.mainWrapper,]}>
+    <View style={styles.mainWrapper}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -120,51 +143,46 @@ export default function SignupScreen() {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent,{}]}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          {/* Logo Section */}
           <BrandedLogo size={120} style={styles.logo} />
 
-          {/* Header Section */}
           <View style={styles.header}>
             <Text style={styles.title}>Create an account</Text>
             <Text style={styles.subtitle}>Join our platform today.</Text>
           </View>
 
-          {/* Form Section */}
           <View style={styles.form}>
-            
             {/* User Type Dropdown */}
             <View style={styles.fieldGroup}>
-                
                 <Pressable 
-                style={[styles.dropdownTrigger, showTypeDropdown && styles.dropdownActive]} 
-                onPress={() => setShowTypeDropdown(!showTypeDropdown)}
+                  style={[styles.dropdownTrigger, showTypeDropdown && styles.dropdownActive]} 
+                  onPress={() => setShowTypeDropdown(!showTypeDropdown)}
                 >
-                <Text style={[styles.dropdownText, !role && { color: theme.colors.text.secondary }]}>
-                    {role ? ROLES.find(r => r.value === role)?.label : 'Select User Type'}
-                </Text>
-                <ChevronDown size={20} color={theme.colors.text.secondary} />
+                  <Text style={[styles.dropdownText, !role && { color: theme.colors.text.secondary }]}>
+                      {role ? ROLES.find(r => r.value === role)?.label : 'Select User Type'}
+                  </Text>
+                  <ChevronDown size={20} color={theme.colors.text.secondary} />
                 </Pressable>
 
                 {showTypeDropdown && (
-                <View style={styles.dropdownMenu}>
-                    {ROLES.map((item) => (
-                    <Pressable 
-                        key={item.value} 
-                        style={styles.dropdownItem}
-                        onPress={() => {
-                        setRole(item.value);
-                        setShowTypeDropdown(false);
-                        }}
-                    >
-                        <Text style={styles.dropdownItemText}>{item.label}</Text>
-                    </Pressable>
-                    ))}
-                </View>
+                  <View style={styles.dropdownMenu}>
+                      {ROLES.map((item) => (
+                      <Pressable 
+                          key={item.value} 
+                          style={styles.dropdownItem}
+                          onPress={() => {
+                            setRole(item.value);
+                            setShowTypeDropdown(false);
+                          }}
+                      >
+                          <Text style={styles.dropdownItemText}>{item.label}</Text>
+                      </Pressable>
+                      ))}
+                  </View>
                 )}
             </View>
 
@@ -190,7 +208,6 @@ export default function SignupScreen() {
               maxLength={10}
             />
 
-            {/* Password Field */}
             <View style={styles.inputWrapper}>
               <AnimatedInput
                 label="Password"
@@ -203,7 +220,6 @@ export default function SignupScreen() {
               </Pressable>
             </View>
 
-            {/* Confirm Password Field */}
             <View style={styles.inputWrapper}>
               <AnimatedInput
                 label="Confirm Password"
@@ -216,14 +232,6 @@ export default function SignupScreen() {
               </Pressable>
             </View>
 
-            {/* Error Message */}
-            {error ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            {/* Submit Button */}
             <AnimatedButton 
               title="Get started" 
               onPress={handleSignup} 
@@ -233,7 +241,6 @@ export default function SignupScreen() {
               style={styles.btn} 
             />
 
-            {/* Login Link */}
             <View style={styles.loginContainer}>
               <Text style={styles.loginText}>Already have an account? </Text>
               <Pressable onPress={() => router.back()}>
@@ -258,8 +265,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, 
     paddingTop: 20,
     paddingBottom: 40,
-    
-   
   },
   logo: { 
     alignSelf: 'center', 
@@ -286,13 +291,6 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: 8,
-    marginLeft: 4,
-    fontWeight: '500'
   },
   dropdownTrigger: {
     flexDirection: 'row',
@@ -323,7 +321,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    overflow: 'hidden'
+    overflow: 'hidden',
+    zIndex: 1000
   },
   dropdownItem: { 
     padding: 15, 
@@ -343,20 +342,6 @@ const styles = StyleSheet.create({
     right: 15, 
     top: 15,
     zIndex: 10 
-  },
-  errorContainer: {
-    backgroundColor: '#FFF5F5',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FEB2B2'
-  },
-  errorText: { 
-    color: theme.colors.error[500], 
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '500'
   },
   btn: { 
     marginTop: 10, 

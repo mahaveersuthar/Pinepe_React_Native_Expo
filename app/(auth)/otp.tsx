@@ -20,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ArrowLeft } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
+import Toast from 'react-native-toast-message'; // Import Toast
 import { theme } from '@/theme';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 
@@ -38,9 +39,7 @@ export default function OTPScreen() {
   const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [error, setError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
-
+  
   const inputRefs = useRef<TextInput[]>([]);
   const shakeAnimation = useSharedValue(0);
 
@@ -77,13 +76,11 @@ export default function OTPScreen() {
     );
   };
 
-  // --- API: RESEND OTP (Requires Authorization, No Domain) ---
+  // --- API: RESEND OTP ---
   const handleResend = async () => {
     if (!canResend || resending) return;
 
     setResending(true);
-    setError('');
-    setIsSuccess(false);
 
     try {
       const token = await SecureStore.getItemAsync('userToken');
@@ -93,7 +90,7 @@ export default function OTPScreen() {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Authorization Required
+          'Authorization': `Bearer ${token}`, 
         },
         body: JSON.stringify({
           type: "login",
@@ -102,23 +99,29 @@ export default function OTPScreen() {
       });
 
       const json = await response.json();
-      console.log(json)
 
       if (json.success) {
+        Toast.show({
+          type: 'success',
+          text1: 'OTP Resent',
+          text2: json.message || 'A new code has been sent.',
+        });
         setTimer(60);
         setCanResend(false);
         setOtp(Array(OTP_LENGTH).fill(''));
-        setIsSuccess(true);
-        setError('OTP resent successfully!');
-        setTimeout(() => {
-            setIsSuccess(false);
-            setError('');
-        }, 3000);
       } else {
-        setError(json.message || 'Failed to resend OTP');
+        Toast.show({
+          type: 'error',
+          text1: 'Resend Failed',
+          text2: json.message || 'Could not resend OTP.',
+        });
       }
     } catch (err) {
-      setError('Connection error. Please try again.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Connection error. Please try again.',
+      });
     } finally {
       setResending(false);
     }
@@ -127,12 +130,14 @@ export default function OTPScreen() {
   // --- API: VERIFY OTP ---
   const handleVerify = async () => {
     const otpValue = otp.join('');
-    setError('');
-    setIsSuccess(false);
 
     if (otpValue.length !== OTP_LENGTH) {
       triggerShake();
-      setError('Please enter all 4 digits');
+      Toast.show({
+        type: 'error',
+        text1: 'Incomplete OTP',
+        text2: `Please enter the ${OTP_LENGTH}-digit code.`,
+      });
       return;
     }
 
@@ -158,6 +163,12 @@ export default function OTPScreen() {
       const json = await response.json();
 
       if (json.success) {
+        Toast.show({
+          type: 'success',
+          text1: 'Verified',
+          text2: 'Login successful!',
+        });
+
         if (from === 'login' || from === 'signup') {
           if (json.data?.access_token) {
             await SecureStore.setItemAsync('userToken', json.data.access_token);
@@ -173,12 +184,20 @@ export default function OTPScreen() {
           });
         }
       } else {
-        setError(json.message || 'Invalid OTP');
         triggerShake();
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid OTP',
+          text2: json.message || 'The code you entered is incorrect.',
+        });
       }
     } catch (err) {
-      setError('Network error. Please try again.');
       triggerShake();
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Network error. Please check your connection.',
+      });
     } finally {
       setLoading(false);
     }
@@ -226,12 +245,6 @@ export default function OTPScreen() {
         </Animated.View>
 
         <View style={styles.timerContainer}>
-          {error ? (
-            <Text style={[styles.statusText, isSuccess ? styles.successText : styles.errorText]}>
-              {error}
-            </Text>
-          ) : null}
-
           {canResend ? (
             <Pressable onPress={handleResend} disabled={resending}>
               <Text style={[styles.resendText, resending && { opacity: 0.5 }]}>
@@ -322,16 +335,8 @@ const styles = StyleSheet.create({
   timerContainer: {
     alignItems: 'center',
     marginBottom: theme.spacing[8],
-    minHeight: 50,
+    minHeight: 30,
   },
-  statusText: {
-    marginBottom: 12,
-    fontSize: theme.typography.fontSizes.sm,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  errorText: { color: theme.colors.error[500] },
-  successText: { color: theme.colors.primary[500] },
   resendText: {
     fontSize: theme.typography.fontSizes.md,
     color: theme.colors.primary[500],

@@ -1,29 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  Image, 
   ScrollView, 
   Pressable, 
   KeyboardAvoidingView, 
-  Platform, 
-  ActivityIndicator, 
-  TouchableWithoutFeedback,
-  Keyboard
+  Platform 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
+import Toast from 'react-native-toast-message';
 import Constants from 'expo-constants';
 import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
-import { useAuth } from '@/context/AuthContext';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn } = useAuth();
   
   // Form State
   const [identifier, setIdentifier] = useState('');
@@ -32,24 +27,21 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Get dynamic domain from app.config.js
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
 
-
-
-  
   const handleLogin = async () => {
     setError('');
     if (!identifier.trim() || !password) {
-      setError('Please enter your credentials');
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter both identifier and password',
+      });
       return;
     }
 
     setLoading(true);
-    console.log("Domain name : ",domainName);
-    console.log("Identifier: ",identifier);
-    console.log("Password : ",password);
 
     try {
       const response = await fetch("https://api.pinepe.in/api/login", {
@@ -68,6 +60,12 @@ export default function LoginScreen() {
       const json = await response.json();
 
       if (json.success) {
+        Toast.show({
+          type: 'success',
+          text1: 'OTP Sent',
+          text2: json.message || 'Verification code sent to your device',
+        });
+
         router.push({
           pathname: '/(auth)/otp',
           params: { 
@@ -76,127 +74,123 @@ export default function LoginScreen() {
           }
         });
       } else {
-        setError(json.message || 'Login failed');
+        Toast.show({
+          type: 'error',
+          text1: 'Login Failed',
+          text2: json.message || 'Invalid credentials',
+        });
+        setError(json.message);
       }
     } catch (err) {
-      setError('Connection error. Please try again.');
+      Toast.show({
+        type: 'error',
+        text1: 'Connection Error',
+        text2: 'Unable to reach server. Check your internet.',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-   <View style={{backgroundColor:'white',flex:1}}>
-       <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container,]}
-    >
-      
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <View style={styles.outerContainer}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
       >
-        <BrandedLogo size={150} style={{ marginBottom: 5 }} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <BrandedLogo size={150} style={styles.logo} />
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
-        </View>
+          <View style={styles.header}>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
+          </View>
 
-        <View style={styles.form}>
-          <AnimatedInput
-            label="Email / Phone / Username"
-            value={identifier}
-            onChangeText={(text) => {
-              setIdentifier(text);
-              setError('');
-            }}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-
-          <View style={styles.passwordContainer}>
+          <View style={styles.form}>
             <AnimatedInput
-              label="Password"
-              value={password}
+              label="Email / Phone / Username"
+              value={identifier}
               onChangeText={(text) => {
-                setPassword(text);
+                setIdentifier(text);
                 setError('');
               }}
-              secureTextEntry={!showPassword}
-              style={styles.passwordInput}
+              autoCapitalize="none"
+              keyboardType="email-address"
             />
-            <Pressable
-              style={styles.eyeIcon}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? (
-                <EyeOff size={20} color={theme.colors.text.secondary} />
-              ) : (
-                <Eye size={20} color={theme.colors.text.secondary} />
-              )}
+
+            <View style={styles.passwordContainer}>
+              <AnimatedInput
+                label="Password"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setError('');
+                }}
+                secureTextEntry={!showPassword}
+                style={styles.passwordInput}
+              />
+              <Pressable
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff size={20} color={theme.colors.text.secondary} />
+                ) : (
+                  <Eye size={20} color={theme.colors.text.secondary} />
+                )}
+              </Pressable>
+            </View>
+
+            
+
+            <Pressable onPress={() => router.push('/(auth)/forgotpassword')}>
+              <Text style={styles.forgotPassword}>Forgot Password?</Text>
             </Pressable>
+
+            <AnimatedButton
+              title="Login"
+              onPress={handleLogin}
+              variant="primary"
+              size="large"
+              loading={loading}
+              style={styles.loginButton}
+            />
+
+            <View style={styles.signupContainer}>
+              <Text style={styles.signupText}>Don't have an account? </Text>
+              <Pressable onPress={() => router.push('/(auth)/signup')}>
+                <Text style={styles.signupLink}>Sign Up</Text>
+              </Pressable>
+            </View>
           </View>
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <Pressable onPress={() => router.push('/(auth)/forgotpassword')}>
-            <Text style={styles.forgotPassword}>Forgot Password?</Text>
-          </Pressable>
-
-          <AnimatedButton
-            title="Login"
-            onPress={handleLogin}
-            variant="primary"
-            size="large"
-            loading={loading}
-            style={styles.loginButton}
-          />
-
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
-            <Pressable onPress={() => router.push('/(auth)/signup')}>
-              <Text style={styles.signupLink}>Sign Up</Text>
-            </Pressable>
-          </View>
-        </View>
-      </ScrollView>
-      
-    </KeyboardAvoidingView>
-   </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.light,
   },
   scrollContent: {
-    flexGrow: 1, // Allows the container to expand to full screen height
-    justifyContent: 'center', // Centers children vertically
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: theme.spacing[6],
     paddingBottom: theme.spacing[8],
   },
-  logoWrapper: {
-    width: 250,
-    height: 120, // Reduced height slightly for better vertical balance
+  logo: {
+    marginBottom: 5,
     alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing[4],
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  loaderContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   header: {
     alignItems: 'center',
@@ -213,7 +207,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   form: {
-    width: '100%', // Changed from flex: 1 to width 100%
+    width: '100%',
   },
   passwordContainer: {
     position: 'relative',
