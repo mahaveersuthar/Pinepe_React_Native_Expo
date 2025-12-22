@@ -10,11 +10,12 @@ import {
   Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Mail } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import Constants from 'expo-constants';
 import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
+import { BrandedLogo } from '@/components/ui/BrandLogo';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -22,20 +23,17 @@ export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Get dynamic domain from app.config.js
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
 
   const handleSubmit = async () => {
     setError('');
-
     if (!identifier.trim()) {
       setError('Please enter your Email or Username');
       return;
     }
 
     setLoading(true);
-
     try {
       const response = await fetch("https://api.pinepe.in/api/forgot-password", {
         method: 'POST',
@@ -44,15 +42,12 @@ export default function ForgotPasswordScreen() {
           'Content-Type': 'application/json',
           'domain': domainName,
         },
-        body: JSON.stringify({
-          login: identifier // Maps to the API requirement
-        }),
+        body: JSON.stringify({ login: identifier }),
       });
 
       const json = await response.json();
 
       if (json.success) {
-        // Success according to your API response: {"success":true,"message":"OTP sent..."}
         Alert.alert(
           "OTP Sent",
           json.message || "Instructions have been sent to your registered email.",
@@ -60,10 +55,7 @@ export default function ForgotPasswordScreen() {
             text: "OK",
             onPress: () => router.push({
               pathname: '/(auth)/otp',
-              params: {
-                otp_sent_to: identifier,
-                from: 'forgotpassword'
-              }// Direct user to enter the OTP they just received
+              params: { otp_sent_to: identifier, from: 'forgotpassword' }
             })
           }]
         );
@@ -78,28 +70,23 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <View style={{flex:1,backgroundColor:'white'}}>
+      <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+      {/* Back Button positioned absolutely to stay at top */}
+      <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <ArrowLeft size={24} color={theme.colors.text.primary} />
+      </Pressable>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Back Button */}
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color={theme.colors.text.primary} />
-        </Pressable>
+        <BrandedLogo size={140} style={styles.logo} />
 
-        {/* Branding Icon */}
-        <View style={styles.iconContainer}>
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary[50] }]}>
-            <Mail size={32} color={theme.colors.primary[500]} />
-          </View>
-        </View>
-
-        {/* Text Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Forgot Password?</Text>
           <Text style={styles.subtitle}>
@@ -116,7 +103,6 @@ export default function ForgotPasswordScreen() {
               setError('');
             }}
             autoCapitalize="none"
-            autoFocus
           />
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -136,6 +122,7 @@ export default function ForgotPasswordScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -146,30 +133,25 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center', // Centers logo, header, and form vertically
     paddingHorizontal: theme.spacing[6],
-    paddingTop: Platform.OS === 'ios' ? theme.spacing[12] : theme.spacing[8],
+    paddingBottom: theme.spacing[8],
   },
   backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40, // Adjust for status bar
+    left: theme.spacing[6],
     width: 40,
     height: 40,
     justifyContent: 'center',
+    zIndex: 10,
+  },
+  logo: {
     marginBottom: theme.spacing[4],
-  },
-  iconContainer: {
-    alignItems: 'center',
-    marginTop: theme.spacing[4],
-    marginBottom: theme.spacing[6],
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: theme.spacing[10],
+    marginBottom: theme.spacing[8],
   },
   title: {
     fontSize: theme.typography.fontSizes['4xl'],
@@ -185,7 +167,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   form: {
-    flex: 1,
+    width: '100%',
   },
   errorText: {
     color: theme.colors.error[500],
@@ -198,7 +180,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[6],
   },
   backToLogin: {
-    paddingVertical: theme.spacing[4],
+    paddingVertical: theme.spacing[2],
   },
   backToLoginText: {
     fontSize: theme.typography.fontSizes.md,

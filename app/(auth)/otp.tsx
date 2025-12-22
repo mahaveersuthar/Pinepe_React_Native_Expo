@@ -7,7 +7,9 @@ import {
   Pressable, 
   KeyboardAvoidingView, 
   Platform, 
-  ScrollView 
+  ScrollView,
+  Dimensions,
+  StatusBar
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Animated, {
@@ -20,14 +22,12 @@ import { ArrowLeft } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import { theme } from '@/theme';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
-import Constants from 'expo-constants';
 
+const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 const OTP_LENGTH = 4;
 
 export default function OTPScreen() {
   const router = useRouter();
-  
-  // Get params passed from previous screen
   const { otp_sent_to, from } = useLocalSearchParams<{ 
     otp_sent_to: string; 
     from: string; 
@@ -37,20 +37,16 @@ export default function OTPScreen() {
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const inputRefs = useRef<TextInput[]>([]);
   const shakeAnimation = useSharedValue(0);
-  
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
 
-  // Countdown timer for Resend OTP
   useEffect(() => {
     if (timer > 0) {
-      const interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
+      const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
       return () => clearInterval(interval);
     } else {
       setCanResend(true);
@@ -59,19 +55,15 @@ export default function OTPScreen() {
 
   const handleOtpChange = (value: string, index: number) => {
     if (isNaN(Number(value))) return;
-
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-
-    // Auto-focus next input
     if (value && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyPress = (key: string, index: number) => {
-    // Handle backspace to focus previous input
     if (key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -81,15 +73,62 @@ export default function OTPScreen() {
     shakeAnimation.value = withSequence(
       withTiming(-10, { duration: 50 }),
       withTiming(10, { duration: 50 }),
-      withTiming(-10, { duration: 50 }),
-      withTiming(10, { duration: 50 }),
       withTiming(0, { duration: 50 })
     );
   };
 
+  // --- API: RESEND OTP (Requires Authorization, No Domain) ---
+  const handleResend = async () => {
+    if (!canResend || resending) return;
+
+    setResending(true);
+    setError('');
+    setIsSuccess(false);
+
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      
+      const response = await fetch("https://api.pinepe.in/api/resend-otp", {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`, // Authorization Required
+        },
+        body: JSON.stringify({
+          type: "login",
+          login: otp_sent_to,
+        }),
+      });
+
+      const json = await response.json();
+      console.log(json)
+
+      if (json.success) {
+        setTimer(60);
+        setCanResend(false);
+        setOtp(Array(OTP_LENGTH).fill(''));
+        setIsSuccess(true);
+        setError('OTP resent successfully!');
+        setTimeout(() => {
+            setIsSuccess(false);
+            setError('');
+        }, 3000);
+      } else {
+        setError(json.message || 'Failed to resend OTP');
+      }
+    } catch (err) {
+      setError('Connection error. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // --- API: VERIFY OTP ---
   const handleVerify = async () => {
     const otpValue = otp.join('');
     setError('');
+    setIsSuccess(false);
 
     if (otpValue.length !== OTP_LENGTH) {
       triggerShake();
@@ -100,18 +139,15 @@ export default function OTPScreen() {
     setLoading(true);
 
     try {
-    // 1. Determine Endpoint based on 'from'
-      // If from login, use login-verify, else use general verify (forgot password)
-      const endpoint = from === 'login' 
+      const endpoint = (from === 'login' || from === 'signup') 
         ? "https://api.pinepe.in/api/verify-otp-login" 
         : "https://api.pinepe.in/api/verify-otp";
 
-      const response = await fetch(endpoint,{
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'domain': domainName,
         },
         body: JSON.stringify({
           login: otp_sent_to, 
@@ -122,9 +158,7 @@ export default function OTPScreen() {
       const json = await response.json();
 
       if (json.success) {
-        // --- REDIRECTION LOGIC ---
-        if (from === 'login') {
-          // Case A: User is logging in
+        if (from === 'login' || from === 'signup') {
           if (json.data?.access_token) {
             await SecureStore.setItemAsync('userToken', json.data.access_token);
           }
@@ -133,13 +167,9 @@ export default function OTPScreen() {
           }
           router.replace('/(tabs)');
         } else {
-          // Case B: Forgot Password Flow (from === 'forgotpassword')
           router.replace({
             pathname: '/(auth)/resetpassword',
-            params: { 
-              login: otp_sent_to, 
-              otp: otpValue 
-            }
+            params: { login: otp_sent_to, otp: otpValue }
           });
         }
       } else {
@@ -154,26 +184,20 @@ export default function OTPScreen() {
     }
   };
 
-  const handleResend = () => {
-    if (canResend) {
-      setTimer(60);
-      setCanResend(false);
-      setOtp(Array(OTP_LENGTH).fill(''));
-      setError('');
-      // Add your resend API call logic here if needed
-    }
-  };
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shakeAnimation.value }],
   }));
 
   return (
     <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ArrowLeft size={24} color={theme.colors.text.primary} />
         </Pressable>
@@ -182,9 +206,7 @@ export default function OTPScreen() {
           <Text style={styles.title}>Verify OTP</Text>
           <Text style={styles.subtitle}>
             Enter the 4-digit code sent to{"\n"}
-            <Text style={styles.boldText}>
-              {otp_sent_to || 'your registered details'}
-            </Text>
+            <Text style={styles.boldText}>{otp_sent_to || 'your details'}</Text>
           </Text>
         </View>
 
@@ -199,17 +221,22 @@ export default function OTPScreen() {
               onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
               keyboardType="number-pad"
               maxLength={1}
-              selectTextOnFocus
             />
           ))}
         </Animated.View>
 
         <View style={styles.timerContainer}>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? (
+            <Text style={[styles.statusText, isSuccess ? styles.successText : styles.errorText]}>
+              {error}
+            </Text>
+          ) : null}
 
           {canResend ? (
-            <Pressable onPress={handleResend}>
-              <Text style={styles.resendText}>Resend OTP</Text>
+            <Pressable onPress={handleResend} disabled={resending}>
+              <Text style={[styles.resendText, resending && { opacity: 0.5 }]}>
+                {resending ? 'Sending...' : 'Resend OTP'}
+              </Text>
             </Pressable>
           ) : (
             <Text style={styles.timerText}>Resend in {timer}s</Text>
@@ -239,15 +266,19 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.light,
   },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: theme.spacing[6],
     paddingTop: theme.spacing[12],
-    flexGrow: 1,
+    paddingBottom: theme.spacing[8],
+    justifyContent: 'center',
+    minHeight: WINDOW_HEIGHT - (StatusBar.currentHeight || 0),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    marginBottom: theme.spacing[6],
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    left: 20,
+    zIndex: 10,
+    padding: 10,
   },
   header: {
     alignItems: 'center',
@@ -265,10 +296,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
-  boldText: {
-    fontWeight: '600', 
-    color: theme.colors.text.primary 
-  },
+  boldText: { fontWeight: '600', color: theme.colors.text.primary },
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -294,30 +322,29 @@ const styles = StyleSheet.create({
   timerContainer: {
     alignItems: 'center',
     marginBottom: theme.spacing[8],
+    minHeight: 50,
   },
-  errorText: {
-    color: theme.colors.error[500],
+  statusText: {
     marginBottom: 12,
     fontSize: theme.typography.fontSizes.sm,
     fontWeight: '500',
+    textAlign: 'center',
   },
-  timerText: {
-    fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.text.secondary,
-  },
+  errorText: { color: theme.colors.error[500] },
+  successText: { color: theme.colors.primary[500] },
   resendText: {
     fontSize: theme.typography.fontSizes.md,
     color: theme.colors.primary[500],
     fontWeight: theme.typography.fontWeights.semibold,
   },
-  verifyButton: {
-    width: '100%',
-    marginBottom: theme.spacing[6],
-  },
-  editText: {
+  timerText: { 
     fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.fontWeights.medium,
+    color: theme.colors.text.secondary 
+  },
+  verifyButton: { width: '100%', marginBottom: theme.spacing[6] },
+  editText: { 
+    fontSize: theme.typography.fontSizes.md,
+    color: theme.colors.text.secondary, 
     textAlign: 'center',
   },
 });

@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { secureStorage } from '@/services/secureStorage';
 import { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
+  loading: boolean; // Managed state for app startup
   signIn: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
@@ -18,7 +18,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true); // 1. Start as true
+
+  // 2. Load user data on app mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const storedUser = await secureStorage.getUserData();
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (e) {
+      console.error("Failed to load auth state", e);
+    } finally {
+      setLoading(false); // 3. Set to false only after checking storage
+    }
+  };
 
   const signIn = async (identifier: string, password: string) => {
     try {
@@ -26,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: 'Please enter credentials' };
       }
 
+      // Replace this with your actual API call later
       const mockUser: User = {
         id: '123',
         full_name: 'John Doe',
@@ -35,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       };
 
-      setUser(mockUser);
       await secureStorage.setUserData(JSON.stringify(mockUser));
+      setUser(mockUser);
       return { success: true };
     } catch (error) {
       return { success: false, error: 'An error occurred during sign in' };
@@ -49,10 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: 'Please fill all fields' };
       }
 
-      if (password.length < 6) {
-        return { success: false, error: 'Password must be at least 6 characters' };
-      }
-
       const mockUser: User = {
         id: '123',
         full_name: fullName,
@@ -62,8 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       };
 
-      setUser(mockUser);
       await secureStorage.setUserData(JSON.stringify(mockUser));
+      setUser(mockUser);
       return { success: true };
     } catch (error) {
       return { success: false, error: 'An error occurred during sign up' };
@@ -93,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        loading, // This will now correctly reflect the loading state
         signIn,
         signUp,
         signOut,

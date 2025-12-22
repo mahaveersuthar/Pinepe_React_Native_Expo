@@ -6,6 +6,8 @@ import { theme } from '@/theme';
 import { AnimatedCard } from '@/components/animated/AnimatedCard';
 import { useAuth } from '@/context/AuthContext';
 import { MPINModal } from '@/components/ui/MPINModal';
+import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 
 interface MenuItem {
   icon: any;
@@ -20,6 +22,10 @@ export default function ProfileScreen() {
   const { user, signOut, hasMPIN, setMPIN } = useAuth();
   const [showMPINModal, setShowMPINModal] = useState(false);
   const [mpinExists, setMpinExists] = useState(false);
+
+  // Domain configuration
+  const tenantData = Constants.expoConfig?.extra?.tenantData;
+  const domainName = tenantData?.domain || "laxmeepay.com";
 
   React.useEffect(() => {
     checkMPIN();
@@ -50,8 +56,37 @@ export default function ProfileScreen() {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await signOut();
-            router.replace('/(auth)/login');
+            try {
+              // 1. Get the token for the Authorization header
+              const token = await SecureStore.getItemAsync('userToken');
+
+              // 2. Call the Logout API
+              // We don't necessarily need to wait for a "success" to clear local data,
+              // but we should attempt the call to invalidate the token on the server.
+              await fetch("https://api.pinepe.in/api/logout", {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'domain': domainName,
+                },
+              });
+            } catch (error) {
+              console.error("Logout API Error:", error);
+            } finally {
+              // 3. Clear storage regardless of API success (user must be logged out locally)
+              await SecureStore.deleteItemAsync('userToken');
+              await SecureStore.deleteItemAsync('userData');
+
+              // 4. Update Auth Context state (if you have one)
+              if (signOut) {
+                await signOut();
+              }
+
+              // 5. Redirect to login
+              router.replace('/(auth)/login');
+            }
           },
         },
       ]

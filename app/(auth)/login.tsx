@@ -8,7 +8,9 @@ import {
   Pressable, 
   KeyboardAvoidingView, 
   Platform, 
-  ActivityIndicator 
+  ActivityIndicator, 
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
@@ -17,6 +19,7 @@ import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { useAuth } from '@/context/AuthContext';
+import { BrandedLogo } from '@/components/ui/BrandLogo';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -29,44 +32,13 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Branding State
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(true);
-
   // Get dynamic domain from app.config.js
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
 
-  useEffect(() => {
-    {console.log("Hello world")}
-    fetchTheme();
-  }, []);
 
-  const fetchTheme = async () => {
-    try {
-      const response = await fetch("https://api.pinepe.in/api/whitelabel/theme", {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'domain': domainName,
-        },
-      });
 
-      const json = await response.json();
-
-      if (json.success && json.data?.theme?.mobile_logo) {
-        setLogoUrl(json.data.theme.mobile_logo);
-      } else {
-        console.log("Theme API failed or no logo found");
-        setImageLoading(false); // Stop loader if no logo exists
-      }
-    } catch (error) {
-      console.error("Error fetching logo:", error);
-      setImageLoading(false);
-    }
-  };
-
+  
   const handleLogin = async () => {
     setError('');
     if (!identifier.trim() || !password) {
@@ -75,6 +47,9 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
+    console.log("Domain name : ",domainName);
+    console.log("Identifier: ",identifier);
+    console.log("Password : ",password);
 
     try {
       const response = await fetch("https://api.pinepe.in/api/login", {
@@ -93,7 +68,6 @@ export default function LoginScreen() {
       const json = await response.json();
 
       if (json.success) {
-        // Navigate to OTP screen and pass the identifier/login info
         router.push({
           pathname: '/(auth)/otp',
           params: { 
@@ -112,38 +86,18 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+   <View style={{backgroundColor:'white',flex:1}}>
+       <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container,]}
     >
+      
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* LOGO SECTION - Fixed height prevents UI jump */}
-        <View style={styles.logoWrapper}>
-          {logoUrl ? (
-            <>
-              <Image
-                source={{ uri: logoUrl }}
-                style={styles.logoImage}
-                resizeMode="contain"
-                onLoadEnd={() => setImageLoading(false)}
-              />
-              {imageLoading && (
-                <View style={styles.loaderContainer}>
-                  <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-                </View>
-              )}
-            </>
-          ) : (
-            // Placeholder while waiting for API URL
-            <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-            </View>
-          )}
-        </View>
+        <BrandedLogo size={150} style={{ marginBottom: 5 }} />
 
         <View style={styles.header}>
           <Text style={styles.title}>Welcome Back</Text>
@@ -208,7 +162,9 @@ export default function LoginScreen() {
           </View>
         </View>
       </ScrollView>
+      
     </KeyboardAvoidingView>
+   </View>
   );
 }
 
@@ -218,18 +174,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.light,
   },
   scrollContent: {
-    flexGrow: 1,
+    flexGrow: 1, // Allows the container to expand to full screen height
+    justifyContent: 'center', // Centers children vertically
     paddingHorizontal: theme.spacing[6],
-    paddingTop: theme.spacing[12],
     paddingBottom: theme.spacing[8],
   },
   logoWrapper: {
     width: 250,
-    height: 180, // Fixed height to maintain layout structure
+    height: 120, // Reduced height slightly for better vertical balance
     alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: theme.spacing[4],
     marginBottom: theme.spacing[4],
   },
   logoImage: {
@@ -245,7 +200,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: theme.spacing[10],
+    marginBottom: theme.spacing[8],
   },
   title: {
     fontSize: theme.typography.fontSizes['4xl'],
@@ -258,7 +213,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   form: {
-    flex: 1,
+    width: '100%', // Changed from flex: 1 to width 100%
   },
   passwordContainer: {
     position: 'relative',
@@ -269,7 +224,7 @@ const styles = StyleSheet.create({
   eyeIcon: {
     position: 'absolute',
     right: theme.spacing[4],
-    top: 18, // Adjusted based on your AnimatedInput label height
+    top: 18, 
   },
   errorText: {
     color: theme.colors.error[500],

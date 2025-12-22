@@ -1,49 +1,64 @@
-const STORAGE: { [key: string]: string } = {};
+import * as SecureStore from 'expo-secure-store';
 
+// Keys
 const MPIN_KEY = 'user_mpin';
 const AUTH_TOKEN_KEY = 'auth_token';
 const USER_DATA_KEY = 'user_data';
+const HAS_OPENED_KEY = 'has_opened_before'; // New Key
 
 export const secureStorage = {
+  // --- Onboarding ---
+  async getHasOpened(): Promise<string | null> {
+    return await SecureStore.getItemAsync(HAS_OPENED_KEY);
+  },
+
+  async setHasOpened(): Promise<void> {
+    await SecureStore.setItemAsync(HAS_OPENED_KEY, 'true');
+  },
+
+  // --- MPIN ---
   async setMPIN(mpin: string): Promise<void> {
-    STORAGE[MPIN_KEY] = mpin;
+    await SecureStore.setItemAsync(MPIN_KEY, mpin);
   },
 
   async getMPIN(): Promise<string | null> {
-    return STORAGE[MPIN_KEY] || null;
+    return await SecureStore.getItemAsync(MPIN_KEY);
   },
 
   async deleteMPIN(): Promise<void> {
-    delete STORAGE[MPIN_KEY];
+    await SecureStore.deleteItemAsync(MPIN_KEY);
   },
 
+  // --- Auth Token ---
   async setAuthToken(token: string): Promise<void> {
-    STORAGE[AUTH_TOKEN_KEY] = token;
+    await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
   },
 
   async getAuthToken(): Promise<string | null> {
-    return STORAGE[AUTH_TOKEN_KEY] || null;
+    return await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
   },
 
   async deleteAuthToken(): Promise<void> {
-    delete STORAGE[AUTH_TOKEN_KEY];
+    await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
   },
 
+  // --- User Data ---
   async setUserData(userData: string): Promise<void> {
-    STORAGE[USER_DATA_KEY] = userData;
+    await SecureStore.setItemAsync(USER_DATA_KEY, userData);
   },
 
   async getUserData(): Promise<string | null> {
-    return STORAGE[USER_DATA_KEY] || null;
+    return await SecureStore.getItemAsync(USER_DATA_KEY);
   },
 
   async deleteUserData(): Promise<void> {
-    delete STORAGE[USER_DATA_KEY];
+    await SecureStore.deleteItemAsync(USER_DATA_KEY);
   },
 
+  // --- Cleanup ---
   async clearAll(): Promise<void> {
-    Object.keys(STORAGE).forEach((key) => {
-      delete STORAGE[key];
-    });
+    await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(USER_DATA_KEY);
+    // Note: We usually keep HAS_OPENED_KEY so they don't see onboarding again
   },
 };
