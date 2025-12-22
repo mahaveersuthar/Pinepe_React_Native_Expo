@@ -2,9 +2,9 @@ import * as SecureStore from 'expo-secure-store';
 
 // Keys
 const MPIN_KEY = 'user_mpin';
-const AUTH_TOKEN_KEY = 'auth_token';
-const USER_DATA_KEY = 'user_data';
-const HAS_OPENED_KEY = 'has_opened_before'; // New Key
+const AUTH_TOKEN_KEY = 'userToken'; // Changed from 'auth_token'
+const USER_DATA_KEY = 'userData'; // Changed from 'user_data'
+const HAS_OPENED_KEY = 'has_opened_before';
 
 export const secureStorage = {
   // --- Onboarding ---
@@ -55,10 +55,10 @@ export const secureStorage = {
     await SecureStore.deleteItemAsync(USER_DATA_KEY);
   },
 
-  // --- Cleanup ---
-  async clearAll(): Promise<void> {
-    await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
-    await SecureStore.deleteItemAsync(USER_DATA_KEY);
-    // Note: We usually keep HAS_OPENED_KEY so they don't see onboarding again
-  },
+ async clearAll(): Promise<void> {
+  await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+  await SecureStore.deleteItemAsync(USER_DATA_KEY);
+  await SecureStore.deleteItemAsync(MPIN_KEY); // Clear MPIN on logout too
+  // Intentionally keep HAS_OPENED_KEY so users don't see onboarding again
+},
 };

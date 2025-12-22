@@ -4,7 +4,7 @@ import { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean; // Managed state for app startup
+  loading: boolean;
   signIn: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
@@ -18,23 +18,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // 1. Start as true
+  const [loading, setLoading] = useState(true);
 
-  // 2. Load user data on app mount
   useEffect(() => {
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     try {
+      // Check for both user data AND auth token
       const storedUser = await secureStorage.getUserData();
-      if (storedUser) {
+      const authToken = await secureStorage.getAuthToken();
+      
+      if (storedUser && authToken) {
         setUser(JSON.parse(storedUser));
+      } else {
+        // If either is missing, clear both to ensure clean state
+        setUser(null);
       }
     } catch (e) {
       console.error("Failed to load auth state", e);
+      setUser(null);
     } finally {
-      setLoading(false); // 3. Set to false only after checking storage
+      setLoading(false);
     }
   };
 
@@ -54,7 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       };
 
+      // Mock token - replace with real token from API
+      const mockToken = 'mock_auth_token_' + Date.now();
+
+      // Store both user data AND token
       await secureStorage.setUserData(JSON.stringify(mockUser));
+      await secureStorage.setAuthToken(mockToken);
+      
       setUser(mockUser);
       return { success: true };
     } catch (error) {
@@ -77,7 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       };
 
+      // Mock token - replace with real token from API
+      const mockToken = 'mock_auth_token_' + Date.now();
+
+      // Store both user data AND token
       await secureStorage.setUserData(JSON.stringify(mockUser));
+      await secureStorage.setAuthToken(mockToken);
+      
       setUser(mockUser);
       return { success: true };
     } catch (error) {
@@ -108,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        loading, // This will now correctly reflect the loading state
+        loading,
         signIn,
         signUp,
         signOut,

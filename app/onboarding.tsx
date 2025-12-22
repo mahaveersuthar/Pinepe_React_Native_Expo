@@ -7,16 +7,18 @@ import {
   Dimensions,
   Pressable,
 } from "react-native";
-import { useRouter } from "expo-router";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   interpolate,
   Extrapolate,
 } from "react-native-reanimated";
+import { useRouter } from 'expo-router';
 import { Shield, Smartphone, CreditCard } from "lucide-react-native";
+
 import { theme } from "@/theme";
 import { AnimatedButton } from "@/components/animated/AnimatedButton";
+import { secureStorage } from "@/services/secureStorage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -145,24 +147,29 @@ function PaginationDot({ index, scrollX }: DotProps) {
 /* -------------------------------------------------------------------------- */
 
 export default function OnboardingScreen() {
-  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useSharedValue(0);
+  const router = useRouter();
 
-  const handleNext = () => {
+  const completeOnboarding = async () => {
+    await secureStorage.setHasOpened();
+    router.replace('/(auth)/login');
+  };
+
+  const handleNext = async () => {
     if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToIndex({
         index: currentIndex + 1,
         animated: true,
       });
     } else {
-      router.replace("/(auth)/login");
+      await completeOnboarding();
     }
   };
 
-  const handleSkip = () => {
-    router.replace("/(auth)/login");
+  const handleSkip = async () => {
+    await completeOnboarding();
   };
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -193,11 +200,7 @@ export default function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         renderItem={({ item, index }) => (
-          <OnboardingSlide
-            item={item}
-            index={index}
-            scrollX={scrollX}
-          />
+          <OnboardingSlide item={item} index={index} scrollX={scrollX} />
         )}
         onScroll={(event) => {
           scrollX.value = event.nativeEvent.contentOffset.x;
@@ -211,11 +214,7 @@ export default function OnboardingScreen() {
       <View style={styles.footer}>
         <View style={styles.pagination}>
           {slides.map((_, index) => (
-            <PaginationDot
-              key={index}
-              index={index}
-              scrollX={scrollX}
-            />
+            <PaginationDot key={index} index={index} scrollX={scrollX} />
           ))}
         </View>
 
