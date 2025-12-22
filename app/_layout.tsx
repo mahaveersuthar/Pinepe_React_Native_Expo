@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
 
 export default function RootLayout() {
   // Access the specific tenant data from app.config.js
-  const tenant = Constants.expoConfig?.extra?.tenantData;
+  
   useFrameworkReady();
 
   return (

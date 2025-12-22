@@ -15,7 +15,6 @@
     "dev:divanshu": "cross-env TENANT_ID=90f55330-b4ec-4220-a59a-d4c1a459c0a5 node ./scripts/fetch-tenant.js && expo start -c",
     "dev:pinepe": "cross-env TENANT_ID=95c1fbeb-388c-44f4-88a9-dd4148f1df3c node ./scripts/fetch-tenant.js && expo start -c",
     "dev:nkpay": "cross-env TENANT_ID=daccd57e-c327-43cf-9f90-db7d72325454 node ./scripts/fetch-tenant.js && expo start -c",
-
     "build:klj": "cross-env TENANT_ID=KLJPAPINP001 node ./scripts/fetch-tenant.js && npx eas build --profile klj --platform android",
     "build:laxmeepay": "cross-env TENANT_ID=LAXMEPINP001 node ./scripts/fetch-tenant.js && npx eas build --profile laxmeepay --platform android",
     "build:divanshu": "cross-env TENANT_ID=90f55330-b4ec-4220-a59a-d4c1a459c0a5 node ./scripts/fetch-tenant.js && npx eas build --profile divanshu --platform android",
@@ -38,7 +37,7 @@
     "expo-linear-gradient": "~15.0.7",
     "expo-linking": "~8.0.8",
     "expo-router": "~6.0.8",
-    "expo-secure-store": "^15.0.7",
+    "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~31.0.10",
     "expo-status-bar": "~3.0.8",
     "expo-symbols": "~1.0.7",
