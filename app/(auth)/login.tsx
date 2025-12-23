@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  Pressable, 
-  KeyboardAvoidingView, 
-  Platform 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
@@ -16,10 +16,36 @@ import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
+import * as Location from "expo-location";
+
+
+const getLatLong = async () => {
+  try {
+    const { status } =
+      await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      return null;
+    }
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+  } catch (error) {
+    console.log("Location error:", error);
+    return null;
+  }
+};
+
 
 export default function LoginScreen() {
   const router = useRouter();
-  
+
   // Form State
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -29,9 +55,9 @@ export default function LoginScreen() {
 
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
-
   const handleLogin = async () => {
     setError('');
+
     if (!identifier.trim() || !password) {
       Toast.show({
         type: 'error',
@@ -44,13 +70,34 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
+      // 📍 Get location
+      const location = await getLatLong();
+
+      // ❌ Block login if location is missing
+      if (!location?.latitude || !location?.longitude) {
+        Toast.show({
+          type: 'error',
+          text1: 'Location Required',
+          text2: 'Please enable location permission to continue',
+        });
+
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch("https://api.pinepe.in/api/login", {
         method: 'POST',
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           'Content-Type': 'application/json',
-          'domain': domainName, 
+          domain: domainName,
+
+          // ✅ PASS LAT/LONG IN HEADERS
+          latitude: String(location.latitude),
+          longitude: String(location.longitude),
         },
+
+        // ✅ ONLY AUTH DATA IN BODY
         body: JSON.stringify({
           login: identifier,
           password: password,
@@ -63,15 +110,15 @@ export default function LoginScreen() {
         Toast.show({
           type: 'success',
           text1: 'OTP Sent',
-          text2: json.message || 'Verification code sent to your device',
+          text2: json.message || 'Verification code sent',
         });
 
         router.push({
           pathname: '/(auth)/otp',
-          params: { 
+          params: {
             otp_sent_to: json.data.otp_sent_to,
-            from: 'login' 
-          }
+            from: 'login',
+          },
         });
       } else {
         Toast.show({
@@ -79,18 +126,20 @@ export default function LoginScreen() {
           text1: 'Login Failed',
           text2: json.message || 'Invalid credentials',
         });
-        setError(json.message);
       }
     } catch (err) {
       Toast.show({
         type: 'error',
         text1: 'Connection Error',
-        text2: 'Unable to reach server. Check your internet.',
+        text2: 'Unable to reach server',
       });
     } finally {
       setLoading(false);
     }
   };
+
+
+
 
   return (
     <View style={styles.outerContainer}>
@@ -145,7 +194,7 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
-            
+
 
             <Pressable onPress={() => router.push('/(auth)/forgotpassword')}>
               <Text style={styles.forgotPassword}>Forgot Password?</Text>
@@ -218,7 +267,7 @@ const styles = StyleSheet.create({
   eyeIcon: {
     position: 'absolute',
     right: theme.spacing[4],
-    top: 18, 
+    top: 18,
   },
   errorText: {
     color: theme.colors.error[500],

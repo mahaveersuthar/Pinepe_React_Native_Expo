@@ -1,64 +1,28 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
 import Toast from 'react-native-toast-message';
-
-import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { secureStorage } from "@/services/secureStorage";
+import { AuthProvider } from "@/context/AuthContext";
 import { useFrameworkReady } from "@/hooks/useFrameworkReady";
-import SplashScreen from "@/app/splash";
 
-function RootNavigator() {
-  const { loading: authLoading, isAuthenticated } = useAuth();
-  const [hasOpened, setHasOpened] = useState<boolean | null>(null);
-  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
-  const [showSplash, setShowSplash] = useState(true);
+// This helps the APK know where to start
+export const unstable_settings = {
+  initialRouteName: "index",
+};
 
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      try {
-        const opened = await secureStorage.getHasOpened();
-        setHasOpened(!!opened);
-      } catch (error) {
-        console.error("Error checking onboarding status:", error);
-        setHasOpened(false);
-      } finally {
-        setIsCheckingOnboarding(false);
-      }
-    };
-    checkOnboarding();
-  }, []);
-
-  const isLoading = authLoading || isCheckingOnboarding;
-  
-  if (showSplash || isLoading) {
-    return (
-      <SplashScreen 
-        onComplete={() => {
-          if (!isLoading) {
-            setShowSplash(false);
-          }
-        }} 
-      />
-    );
-  }
-
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {!hasOpened && <Stack.Screen name="onboarding" />}
-      {hasOpened && !isAuthenticated && <Stack.Screen name="(auth)" />}
-      {hasOpened && isAuthenticated && <Stack.Screen name="(tabs)" />}
-      <Stack.Screen name="+not-found" />
-    </Stack>
-  );
-}
-
+// MUST BE DEFAULT EXPORT
 export default function RootLayout() {
   useFrameworkReady();
 
   return (
     <AuthProvider>
-      <RootNavigator />
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* We define the screens here, but index.tsx handles the logic */}
+        <Stack.Screen name="index" /> 
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
       <StatusBar style="auto" />
       <Toast /> 
     </AuthProvider>
