@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  Pressable, 
-  KeyboardAvoidingView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  KeyboardAvoidingView,
   Platform,
   Dimensions,
   StatusBar
@@ -18,6 +18,8 @@ import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
+import { registerApi } from '../api/auth.api';
+import { getLatLong } from '@/utils/location';
 
 const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 
@@ -29,7 +31,7 @@ const ROLES = [
 
 export default function SignupScreen() {
   const router = useRouter();
-  
+
   // Form State
   const [role, setRole] = useState('');
   const [fullName, setFullName] = useState('');
@@ -37,7 +39,7 @@ export default function SignupScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
-  
+
   // UI State
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,31 +50,31 @@ export default function SignupScreen() {
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
 
+
   const handleSignup = async () => {
-    // 2. Basic Validation with Toasts
     if (!role || !fullName || !email || !phone || !password || !passwordConfirmation) {
       Toast.show({
-        type: 'error',
-        text1: 'Required Fields',
-        text2: 'Please fill all details to continue',
+        type: "error",
+        text1: "Required Fields",
+        text2: "Please fill all details to continue",
       });
       return;
     }
 
     if (password !== passwordConfirmation) {
       Toast.show({
-        type: 'error',
-        text1: 'Password Mismatch',
-        text2: 'Confirm password does not match',
+        type: "error",
+        text1: "Password Mismatch",
+        text2: "Confirm password does not match",
       });
       return;
     }
 
     if (phone.length < 10) {
       Toast.show({
-        type: 'error',
-        text1: 'Invalid Phone',
-        text2: 'Please enter a valid 10-digit number',
+        type: "error",
+        text1: "Invalid Phone",
+        text2: "Please enter a valid 10-digit number",
       });
       return;
     }
@@ -80,59 +82,58 @@ export default function SignupScreen() {
     setLoading(true);
 
     try {
-      const response = await fetch("https://api.pinepe.in/api/register", {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'domain': domainName,
-        },
-        body: JSON.stringify({
+      // 📍 Get location
+      const location = await getLatLong();
+
+      // ❌ Block signup if location missing
+      if (!location) {
+        Toast.show({
+          type: "error",
+          text1: "Location Required",
+          text2: "Please enable location permission to continue",
+        });
+        return;
+      }
+
+      const json = await registerApi(
+        {
           name: fullName,
-          email: email,
-          phone: phone,
-          role: role,
-          password: password,
+          email,
+          phone,
+          role,
+          password,
           password_confirmation: passwordConfirmation,
-        }),
+        },
+        {
+          domain: domainName,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }
+      );
+
+      Toast.show({
+        type: "success",
+        text1: "Account Created",
+        text2: "Please verify your email to continue",
       });
 
-      const json = await response.json();
-
-      if (json.success) {
-        // 3. Success Toast
-        Toast.show({
-          type: 'success',
-          text1: 'Account Created',
-          text2: 'Please verify your email to continue',
-        });
-
-        router.replace({
-          pathname: '/(auth)/otp',
-          params: { 
-            otp_sent_to: email,
-            from: 'signup'
-          }
-        });
-      } else {
-        // 4. API Error Toast
-        Toast.show({
-          type: 'error',
-          text1: 'Signup Failed',
-          text2: json.message || 'Check your details and try again',
-        });
-      }
-    } catch (err) {
+      router.replace({
+        pathname: "/(auth)/otp",
+        params: {
+          otp_sent_to: email,
+          from: "signup",
+        },
+      });
+    } catch (err: any) {
       Toast.show({
-        type: 'error',
-        text1: 'Network Error',
-        text2: 'Please check your connection and try again',
+        type: "error",
+        text1: "Signup Failed",
+        text2: err.message || "Check your details and try again",
       });
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <View style={styles.mainWrapper}>
       <StatusBar barStyle="dark-content" />
@@ -158,38 +159,38 @@ export default function SignupScreen() {
           <View style={styles.form}>
             {/* User Type Dropdown */}
             <View style={styles.fieldGroup}>
-                <Pressable 
-                  style={[styles.dropdownTrigger, showTypeDropdown && styles.dropdownActive]} 
-                  onPress={() => setShowTypeDropdown(!showTypeDropdown)}
-                >
-                  <Text style={[styles.dropdownText, !role && { color: theme.colors.text.secondary }]}>
-                      {role ? ROLES.find(r => r.value === role)?.label : 'Select User Type'}
-                  </Text>
-                  <ChevronDown size={20} color={theme.colors.text.secondary} />
-                </Pressable>
+              <Pressable
+                style={[styles.dropdownTrigger, showTypeDropdown && styles.dropdownActive]}
+                onPress={() => setShowTypeDropdown(!showTypeDropdown)}
+              >
+                <Text style={[styles.dropdownText, !role && { color: theme.colors.text.secondary }]}>
+                  {role ? ROLES.find(r => r.value === role)?.label : 'Select User Type'}
+                </Text>
+                <ChevronDown size={20} color={theme.colors.text.secondary} />
+              </Pressable>
 
-                {showTypeDropdown && (
-                  <View style={styles.dropdownMenu}>
-                      {ROLES.map((item) => (
-                      <Pressable 
-                          key={item.value} 
-                          style={styles.dropdownItem}
-                          onPress={() => {
-                            setRole(item.value);
-                            setShowTypeDropdown(false);
-                          }}
-                      >
-                          <Text style={styles.dropdownItemText}>{item.label}</Text>
-                      </Pressable>
-                      ))}
-                  </View>
-                )}
+              {showTypeDropdown && (
+                <View style={styles.dropdownMenu}>
+                  {ROLES.map((item) => (
+                    <Pressable
+                      key={item.value}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setRole(item.value);
+                        setShowTypeDropdown(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>{item.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
 
-            <AnimatedInput 
-              label="Full Name" 
-              value={fullName} 
-              onChangeText={setFullName} 
+            <AnimatedInput
+              label="Full Name"
+              value={fullName}
+              onChangeText={setFullName}
             />
 
             <AnimatedInput
@@ -232,13 +233,13 @@ export default function SignupScreen() {
               </Pressable>
             </View>
 
-            <AnimatedButton 
-              title="Get started" 
-              onPress={handleSignup} 
-              loading={loading} 
+            <AnimatedButton
+              title="Get started"
+              onPress={handleSignup}
+              loading={loading}
               variant="primary"
               size="large"
-              style={styles.btn} 
+              style={styles.btn}
             />
 
             <View style={styles.loginContainer}>
@@ -259,35 +260,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background.light,
   },
-  scrollContent: { 
-    flexGrow: 1, 
-    justifyContent: 'center', 
-    paddingHorizontal: 24, 
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 40,
   },
-  logo: { 
-    alignSelf: 'center', 
-    marginBottom: 10 
+  logo: {
+    alignSelf: 'center',
+    marginBottom: 10
   },
-  header: { 
-    marginBottom: 30, 
-    alignItems: 'center' 
+  header: {
+    marginBottom: 30,
+    alignItems: 'center'
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: theme.colors.text.primary,
     textAlign: 'center'
   },
-  subtitle: { 
-    fontSize: 16, 
-    color: theme.colors.text.secondary, 
+  subtitle: {
+    fontSize: 16,
+    color: theme.colors.text.secondary,
     marginTop: 5,
     textAlign: 'center'
   },
-  form: { 
-    width: '100%' 
+  form: {
+    width: '100%'
   },
   fieldGroup: {
     marginBottom: 16,
@@ -306,15 +307,15 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary[500],
     borderWidth: 2,
   },
-  dropdownText: { 
+  dropdownText: {
     fontSize: 16,
-    color: theme.colors.text.primary 
+    color: theme.colors.text.primary
   },
-  dropdownMenu: { 
-    backgroundColor: '#fff', 
-    borderWidth: 1, 
-    borderColor: theme.colors.border.medium, 
-    borderRadius: 12, 
+  dropdownMenu: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: theme.colors.border.medium,
+    borderRadius: 12,
     marginTop: 4,
     elevation: 3,
     shadowColor: '#000',
@@ -324,41 +325,41 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 1000
   },
-  dropdownItem: { 
-    padding: 15, 
-    borderBottomWidth: 1, 
-    borderBottomColor: theme.colors.border.light 
+  dropdownItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light
   },
-  dropdownItemText: { 
+  dropdownItemText: {
     fontSize: 16,
-    color: theme.colors.text.primary 
+    color: theme.colors.text.primary
   },
-  inputWrapper: { 
+  inputWrapper: {
     position: 'relative',
     marginBottom: 4
   },
-  eyeIcon: { 
-    position: 'absolute', 
-    right: 15, 
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
     top: 15,
-    zIndex: 10 
+    zIndex: 10
   },
-  btn: { 
-    marginTop: 10, 
+  btn: {
+    marginTop: 10,
     marginBottom: 20,
     width: '100%'
   },
-  loginContainer: { 
-    flexDirection: 'row', 
+  loginContainer: {
+    flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 10
   },
-  loginText: { 
+  loginText: {
     color: theme.colors.text.secondary,
     fontSize: 15
   },
-  loginLink: { 
-    color: theme.colors.primary[500], 
+  loginLink: {
+    color: theme.colors.primary[500],
     fontWeight: 'bold',
     fontSize: 15
   },

@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  Pressable, 
-  KeyboardAvoidingView, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Dimensions,
   StatusBar
@@ -23,23 +23,28 @@ import * as SecureStore from 'expo-secure-store';
 import Toast from 'react-native-toast-message'; // Import Toast
 import { theme } from '@/theme';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
+import { getLatLong } from '@/utils/location';
+import { verifyOtpApi } from '../api/auth.api';
+import Constants from 'expo-constants';
 
 const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 const OTP_LENGTH = 4;
 
 export default function OTPScreen() {
   const router = useRouter();
-  const { otp_sent_to, from } = useLocalSearchParams<{ 
-    otp_sent_to: string; 
-    from: string; 
+  const { otp_sent_to, from } = useLocalSearchParams<{
+    otp_sent_to: string;
+    from: string;
   }>();
 
+  const tenantData = Constants.expoConfig?.extra?.tenantData;
+  const domainName = tenantData?.domain || "laxmeepay.com";
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  
+
   const inputRefs = useRef<TextInput[]>([]);
   const shakeAnimation = useSharedValue(0);
 
@@ -84,7 +89,7 @@ export default function OTPScreen() {
 
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      
+
       const response = await fetch("https://api.pinepe.in/api/resend-otp", {
         method: 'POST',
         headers: {
@@ -126,15 +131,14 @@ export default function OTPScreen() {
     }
   };
 
-  // --- API: VERIFY OTP ---
   const handleVerify = async () => {
-    const otpValue = otp.join('');
+    const otpValue = otp.join("");
 
     if (otpValue.length !== OTP_LENGTH) {
       triggerShake();
       Toast.show({
-        type: 'error',
-        text1: 'Incomplete OTP',
+        type: "error",
+        text1: "Incomplete OTP",
         text2: `Please enter the ${OTP_LENGTH}-digit code.`,
       });
       return;
@@ -143,76 +147,80 @@ export default function OTPScreen() {
     setLoading(true);
 
     try {
-      const endpoint = (from === 'login' || from === 'signup') 
-        ? "https://api.pinepe.in/api/verify-otp-login" 
-        : "https://api.pinepe.in/api/verify-otp";
+      // 📍 Get location
+      const location = await getLatLong();
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
+      // ❌ Enforce location
+      if (!location) {
+        Toast.show({
+          type: "error",
+          text1: "Location Required",
+          text2: "Please enable location permission to continue",
+        });
+        return;
+      }
+
+      const json = await verifyOtpApi(
+        {
+          login: otp_sent_to,
+          otp: otpValue,
         },
-        body: JSON.stringify({
-          login: otp_sent_to, 
-          otp: otpValue
-        }),
+        {
+          flow: from === "login" || from === "signup" ? "login" : "forgot",
+          domain: domainName,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }
+      );
+
+      Toast.show({
+        type: "success",
+        text1: "Verified",
+        text2: "OTP verified successfully!",
       });
 
-      const json = await response.json();
-
-      if (json.success) {
-        Toast.show({
-          type: 'success',
-          text1: 'Verified',
-          text2: 'Login successful!',
-        });
-
-        if (from === 'login' || from === 'signup') {
-          if (json.data?.access_token) {
-            await SecureStore.setItemAsync('userToken', json.data.access_token);
-          }
-          if (json.data?.user) {
-            await SecureStore.setItemAsync('userData', JSON.stringify(json.data.user));
-          }
-          router.replace('/(tabs)');
-        } else {
-          router.replace({
-            pathname: '/(auth)/resetpassword',
-            params: { login: otp_sent_to, otp: otpValue }
-          });
+      if (from === "login" || from === "signup") {
+        if (json.data?.access_token) {
+          await SecureStore.setItemAsync("userToken", json.data.access_token);
         }
+        if (json.data?.user) {
+          await SecureStore.setItemAsync(
+            "userData",
+            JSON.stringify(json.data.user)
+          );
+        }
+        router.replace("/(tabs)");
       } else {
-        triggerShake();
-        Toast.show({
-          type: 'error',
-          text1: 'Invalid OTP',
-          text2: json.message || 'The code you entered is incorrect.',
+        router.replace({
+          pathname: "/(auth)/resetpassword",
+          params: {
+            login: otp_sent_to,
+            otp: otpValue,
+          },
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       triggerShake();
       Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Network error. Please check your connection.',
+        type: "error",
+        text1: "Invalid OTP",
+        text2: err.message || "The code you entered is incorrect.",
       });
     } finally {
       setLoading(false);
     }
   };
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shakeAnimation.value }],
   }));
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -341,14 +349,14 @@ const styles = StyleSheet.create({
     color: theme.colors.primary[500],
     fontWeight: theme.typography.fontWeights.semibold,
   },
-  timerText: { 
+  timerText: {
     fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.text.secondary 
+    color: theme.colors.text.secondary
   },
   verifyButton: { width: '100%', marginBottom: theme.spacing[6] },
-  editText: { 
+  editText: {
     fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.text.secondary, 
+    color: theme.colors.text.secondary,
     textAlign: 'center',
   },
 });

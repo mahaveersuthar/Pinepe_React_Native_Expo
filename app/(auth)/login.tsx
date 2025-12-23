@@ -17,30 +17,11 @@ import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
 import * as Location from "expo-location";
+import { loginApi } from '../api/auth.api';
+import { getLatLong } from '@/utils/location';
 
 
-const getLatLong = async () => {
-  try {
-    const { status } =
-      await Location.requestForegroundPermissionsAsync();
 
-    if (status !== "granted") {
-      return null;
-    }
-
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-
-    return {
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    };
-  } catch (error) {
-    console.log("Location error:", error);
-    return null;
-  }
-};
 
 
 export default function LoginScreen() {
@@ -55,14 +36,16 @@ export default function LoginScreen() {
 
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
+
   const handleLogin = async () => {
-    setError('');
+    setError("");
+    console.log("inside login")
 
     if (!identifier.trim() || !password) {
       Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter both identifier and password',
+        type: "error",
+        text1: "Validation Error",
+        text2: "Please enter both identifier and password",
       });
       return;
     }
@@ -70,68 +53,47 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      // 📍 Get location
       const location = await getLatLong();
 
-      // ❌ Block login if location is missing
-      if (!location?.latitude || !location?.longitude) {
+      if (!location) {
         Toast.show({
-          type: 'error',
-          text1: 'Location Required',
-          text2: 'Please enable location permission to continue',
+          type: "error",
+          text1: "Location Required",
+          text2: "Please enable location permission to continue",
         });
-
-        setLoading(false);
         return;
       }
 
-      const response = await fetch("https://api.pinepe.in/api/login", {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          domain: domainName,
-
-          // ✅ PASS LAT/LONG IN HEADERS
-          latitude: String(location.latitude),
-          longitude: String(location.longitude),
-        },
-
-        // ✅ ONLY AUTH DATA IN BODY
-        body: JSON.stringify({
+      const json = await loginApi(
+        {
           login: identifier,
-          password: password,
-        }),
+          password,
+        },
+        {
+          domain: domainName,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }
+      );
+
+      Toast.show({
+        type: "success",
+        text1: "OTP Sent",
+        text2: json.message || "Verification code sent",
       });
 
-      const json = await response.json();
-
-      if (json.success) {
-        Toast.show({
-          type: 'success',
-          text1: 'OTP Sent',
-          text2: json.message || 'Verification code sent',
-        });
-
-        router.push({
-          pathname: '/(auth)/otp',
-          params: {
-            otp_sent_to: json.data.otp_sent_to,
-            from: 'login',
-          },
-        });
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Login Failed',
-          text2: json.message || 'Invalid credentials',
-        });
-      }
-    } catch (err) {
+      router.push({
+        pathname: "/(auth)/otp",
+        params: {
+          otp_sent_to: json.data.otp_sent_to,
+          from: "login",
+        },
+      });
+    } catch (err: any) {
       Toast.show({
-        type: 'error',
-        text1: 'Connection Error',
-        text2: 'Unable to reach server',
+        type: "error",
+        text1: "Login Failed",
+        text2: err.message || "Something went wrong",
       });
     } finally {
       setLoading(false);

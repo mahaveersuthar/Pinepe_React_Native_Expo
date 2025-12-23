@@ -16,6 +16,8 @@ import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
+import { forgotPasswordApi } from '../api/auth.api';
+import { getLatLong } from '@/utils/location';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -28,55 +30,58 @@ export default function ForgotPasswordScreen() {
   const handleSubmit = async () => {
     if (!identifier.trim()) {
       Toast.show({
-        type: 'error',
-        text1: 'Input Required',
-        text2: 'Please enter your Email or Username',
+        type: "error",
+        text1: "Input Required",
+        text2: "Please enter your Email or Username",
       });
       return;
     }
 
     setLoading(true);
+
     try {
-      const response = await fetch("https://api.pinepe.in/api/forgot-password", {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'domain': domainName,
-        },
-        body: JSON.stringify({ login: identifier }),
+      // 📍 Get location
+      const location = await getLatLong();
+
+      // ❌ Block if location missing
+      if (!location) {
+        Toast.show({
+          type: "error",
+          text1: "Location Required",
+          text2: "Please enable location permission to continue",
+        });
+        return;
+      }
+
+      const json = await forgotPasswordApi(
+        { login: identifier },
+        {
+          domain: domainName,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }
+      );
+
+      Toast.show({
+        type: "success",
+        text1: "OTP Sent",
+        text2: json.message || "Verification code sent successfully.",
       });
 
-      const json = await response.json();
-
-      if (json.success) {
-        // 2. Success Toast instead of Alert
-        Toast.show({
-          type: 'success',
-          text1: 'OTP Sent',
-          text2: json.message || 'Verification code sent successfully.',
+      setTimeout(() => {
+        router.push({
+          pathname: "/(auth)/otp",
+          params: {
+            otp_sent_to: identifier,
+            from: "forgotpassword",
+          },
         });
-
-        // Small delay to let user see the toast before navigation
-        setTimeout(() => {
-            router.push({
-              pathname: '/(auth)/otp',
-              params: { otp_sent_to: identifier, from: 'forgotpassword' }
-            });
-        }, 500);
-
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'User Not Found',
-          text2: json.message || 'No account associated with this information.',
-        });
-      }
-    } catch (err) {
+      }, 500);
+    } catch (err: any) {
       Toast.show({
-        type: 'error',
-        text1: 'Connection Error',
-        text2: 'Please check your internet and try again.',
+        type: "error",
+        text1: "User Not Found",
+        text2: err.message || "No account associated with this information.",
       });
     } finally {
       setLoading(false);
@@ -84,7 +89,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <View style={{flex:1,backgroundColor:'white'}}>
+    <View style={{ flex: 1, backgroundColor: 'white' }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}

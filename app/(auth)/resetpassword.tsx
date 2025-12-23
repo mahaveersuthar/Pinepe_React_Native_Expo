@@ -18,6 +18,8 @@ import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import Constants from 'expo-constants';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
+import { getLatLong } from '@/utils/location';
+import { resetPasswordApi } from '../api/auth.api';
 
 const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 
@@ -37,59 +39,64 @@ export default function ResetPasswordScreen() {
     const handleResetPassword = async () => {
         if (!password || !confirmPassword) {
             Toast.show({
-                type: 'error',
-                text1: 'Required',
-                text2: 'Please fill all fields',
+                type: "error",
+                text1: "Required",
+                text2: "Please fill all fields",
             });
             return;
         }
+
         if (password !== confirmPassword) {
             Toast.show({
-                type: 'error',
-                text1: 'Mismatch',
-                text2: 'Passwords do not match',
+                type: "error",
+                text1: "Mismatch",
+                text2: "Passwords do not match",
             });
             return;
         }
 
         setLoading(true);
+
         try {
-            const response = await fetch("https://api.pinepe.in/api/reset-password", {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Domain': domainName,
-                },
-                body: JSON.stringify({
-                    login: login,
-                    otp: otp,
+            // 📍 Get location
+            const location = await getLatLong();
+
+            // ❌ Block if location missing
+            if (!location) {
+                Toast.show({
+                    type: "error",
+                    text1: "Location Required",
+                    text2: "Please enable location permission to continue",
+                });
+                return;
+            }
+
+            const json = await resetPasswordApi(
+                {
+                    login,
+                    otp,
                     new_password: password,
                     new_password_confirmation: confirmPassword,
-                }),
+                },
+                {
+                    domain: domainName,
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                }
+            );
+
+            Toast.show({
+                type: "success",
+                text1: "Success",
+                text2: "Password reset successfully. Please login.",
             });
 
-            const json = await response.json();
-            if (json.success) {
-                // 2. Show success toast before redirect
-                Toast.show({
-                    type: 'success',
-                    text1: 'Success',
-                    text2: 'Password reset successfully. Please login.',
-                });
-                router.replace('/(auth)/login');
-            } else {
-                Toast.show({
-                    type: 'error',
-                    text1: 'Reset Failed',
-                    text2: json.message || 'Please try again.',
-                });
-            }
-        } catch (err) {
+            router.replace("/(auth)/login");
+        } catch (err: any) {
             Toast.show({
-                type: 'error',
-                text1: 'Connection Error',
-                text2: 'Please check your internet connection.',
+                type: "error",
+                text1: "Reset Failed",
+                text2: err.message || "Please try again.",
             });
         } finally {
             setLoading(false);
@@ -97,7 +104,7 @@ export default function ResetPasswordScreen() {
     };
 
     return (
-        <View style={{flex:1, backgroundColor:'white'}}>
+        <View style={{ flex: 1, backgroundColor: 'white' }}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.container}

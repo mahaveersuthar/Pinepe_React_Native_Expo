@@ -8,6 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import { MPINModal } from '@/components/ui/MPINModal';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import { getLatLong } from '@/utils/location';
+import { logoutApi } from '../api/auth.api';
 
 interface MenuItem {
   icon: any;
@@ -48,44 +50,43 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      "Logout",
+      "Are you sure you want to logout?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Logout',
-          style: 'destructive',
+          text: "Logout",
+          style: "destructive",
           onPress: async () => {
             try {
-              // 1. Get the token for the Authorization header
-              const token = await SecureStore.getItemAsync('userToken');
+              const token = await SecureStore.getItemAsync("userToken");
 
-              // 2. Call the Logout API
-              // We don't necessarily need to wait for a "success" to clear local data,
-              // but we should attempt the call to invalidate the token on the server.
-              await fetch("https://api.pinepe.in/api/logout", {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                  'domain': domainName,
-                },
-              });
+              // 📍 Get location
+              const location = await getLatLong();
+
+              // 🔐 Call logout API (best-effort)
+              if (token && location) {
+                await logoutApi({
+                  token,
+                  domain: domainName,
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                });
+              }
             } catch (error) {
-              console.error("Logout API Error:", error);
+              console.log("Logout API Error:", error);
             } finally {
-              // 3. Clear storage regardless of API success (user must be logged out locally)
-              await SecureStore.deleteItemAsync('userToken');
-              await SecureStore.deleteItemAsync('userData');
+              // 🧹 Always clear local data
+              await SecureStore.deleteItemAsync("userToken");
+              await SecureStore.deleteItemAsync("userData");
 
-              // 4. Update Auth Context state (if you have one)
+              // 🔄 Update auth state
               if (signOut) {
                 await signOut();
               }
 
-              // 5. Redirect to login
-              router.replace('/(auth)/login');
+              // 🚪 Redirect to login
+              router.replace("/(auth)/login");
             }
           },
         },
@@ -101,7 +102,7 @@ export default function ProfileScreen() {
           icon: UserIcon,
           title: 'Edit Profile',
           subtitle: 'Update your personal information',
-          onPress: () => {},
+          onPress: () => { },
           showChevron: true,
         },
         {
@@ -120,14 +121,14 @@ export default function ProfileScreen() {
           icon: Bell,
           title: 'Notifications',
           subtitle: 'Manage notification settings',
-          onPress: () => {},
+          onPress: () => { },
           showChevron: true,
         },
         {
           icon: Settings,
           title: 'Settings',
           subtitle: 'App preferences and configuration',
-          onPress: () => {},
+          onPress: () => { },
           showChevron: true,
         },
       ],
@@ -139,7 +140,7 @@ export default function ProfileScreen() {
           icon: HelpCircle,
           title: 'Help & Support',
           subtitle: 'Get help with your account',
-          onPress: () => {},
+          onPress: () => { },
           showChevron: true,
         },
       ],
