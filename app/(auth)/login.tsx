@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -100,6 +100,11 @@ export default function LoginScreen() {
     }
   };
 
+  useEffect(() => {
+    (async () => {
+      await getLatLong();
+    })();
+  }, []);
 
 
 
@@ -114,8 +119,7 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <BrandedLogo size={150} style={styles.logo} />
-
+          <BrandedLogo size={200} style={styles.logo} />
           <View style={styles.header}>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>

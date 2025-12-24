@@ -1,65 +1,43 @@
 // components/BrandedLogo.tsx
-import React, { useState } from 'react';
-import { View, Image, ActivityIndicator, StyleSheet, ViewStyle } from 'react-native';
-import { useBranding } from '../../app/(auth)/_layout'
-import { theme } from '@/theme';
+import React from "react";
+import { View, Image, StyleSheet, ViewStyle } from "react-native";
+import { theme } from "@/theme";
 
 interface BrandedLogoProps {
   size?: number;
   style?: ViewStyle;
 }
 
-export const BrandedLogo = ({ size = 120, style }: BrandedLogoProps) => {
-  const { logoUrl, loading: brandingLoading } = useBranding();
-  const [imageLoading, setImageLoading] = useState(true);
+const APP_ICON = require("@/assets/generated/icon.png");
 
-  // If the layout is still fetching the URL
-  if (brandingLoading) {
-    return (
-      <View style={[styles.container, { height: size }, style]}>
-        <ActivityIndicator size="small" color={theme.colors.primary[500]} />
-      </View>
-    );
-  }
-
-  // If no logo was found after fetching
-  if (!logoUrl) return null;
-
+export const BrandedLogo = ({
+  size = 120,
+  style,
+}: BrandedLogoProps) => {
   return (
-    <View style={[styles.container, { height: size }, style]}>
+    <View
+      style={[
+        styles.container,
+        { width: size, height: size },
+        style,
+      ]}
+    >
       <Image
-        source={{ uri: logoUrl }}
+        source={APP_ICON}
         style={styles.image}
         resizeMode="contain"
-        onLoadEnd={() => setImageLoading(false)}
       />
-      {imageLoading && (
-        <View style={styles.loaderOverlay}>
-          <ActivityIndicator size="small" color={theme.colors.primary[500]} />
-        </View>
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    justifyContent: "center",
+    alignItems: "center",
   },
   image: {
-    width: '100%',
-    height: '100%',
-  },
-  loaderOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100%",
+    height: "100%",
   },
 });

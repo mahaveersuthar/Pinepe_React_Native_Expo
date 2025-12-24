@@ -1,15 +1,40 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { User as UserIcon, Settings, Lock, Bell, HelpCircle, LogOut, ChevronRight } from 'lucide-react-native';
-import { theme } from '@/theme';
-import { AnimatedCard } from '@/components/animated/AnimatedCard';
-import { useAuth } from '@/context/AuthContext';
-import { MPINModal } from '@/components/ui/MPINModal';
-import * as SecureStore from 'expo-secure-store';
-import Constants from 'expo-constants';
-import { getLatLong } from '@/utils/location';
-import { logoutApi } from '../api/auth.api';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Alert,
+} from "react-native";
+import { useRouter } from "expo-router";
+import {
+  User as UserIcon,
+  Settings,
+  Lock,
+  Bell,
+  HelpCircle,
+  LogOut,
+  ChevronRight,
+  Camera,
+  User,
+} from "lucide-react-native";
+import * as SecureStore from "expo-secure-store";
+import * as ImagePicker from "expo-image-picker";
+import Constants from "expo-constants";
+import Toast from "react-native-toast-message";
+
+import { theme } from "@/theme";
+import { AnimatedCard } from "@/components/animated/AnimatedCard";
+import { useAuth } from "@/context/AuthContext";
+
+import { getLatLong } from "@/utils/location";
+import { logoutApi } from "../api/auth.api";
+import { getProfileApi, uploadProfilePhotoApi } from "../api/profile.api";
+import { EditProfileModal } from "@/components/ui/EditProfileModal";
+import { SetupMPINModal } from "@/components/ui/MPINModal";
+import { sendMpinOtpApi } from "../api/mpin.api";
 
 interface MenuItem {
   icon: any;
@@ -21,130 +46,223 @@ interface MenuItem {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, signOut, hasMPIN, setMPIN } = useAuth();
-  const [showMPINModal, setShowMPINModal] = useState(false);
-  const [mpinExists, setMpinExists] = useState(false);
+  const { signOut, hasMPIN } = useAuth();
 
-  // Domain configuration
+  const [profileData, setProfileData] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [showSetupMPIN, setShowSetupMPIN] = useState(false);
+  const [mpinExists, setMpinExists] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
 
-  React.useEffect(() => {
-    checkMPIN();
+
+  const handleResetMpin = async () => {
+  try {
+    setSendingOtp(true);
+
+    const location = await getLatLong();
+    const token = await SecureStore.getItemAsync("userToken");
+
+    if (!location || !token) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Missing location or session",
+      });
+      return;
+    }
+
+    const tenantData = Constants.expoConfig?.extra?.tenantData;
+    const domainName = tenantData?.domain || "laxmeepay.com";
+
+    const res = await sendMpinOtpApi({
+      domain: domainName,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      token,
+    });
+
+    if (res.success) {
+      Toast.show({
+        type: "success",
+        text1: "OTP Sent",
+        text2: res.message,
+      });
+
+      // ✅ OPEN MODAL ONLY AFTER OTP SUCCESS
+      setShowSetupMPIN(true);
+    }
+  } catch (err: any) {
+    Toast.show({
+      type: "error",
+      text1: "Failed to send OTP",
+      text2: err.message || "Something went wrong",
+    });
+  } finally {
+    setSendingOtp(false);
+  }
+};
+
+  /* ---------------- FETCH PROFILE ---------------- */
+  const fetchProfile = async () => {
+    try {
+      setProfileLoading(true);
+
+      const location = await getLatLong();
+      const token = await SecureStore.getItemAsync("userToken");
+      if (!location || !token) return;
+
+      const res = await getProfileApi({
+        domain: domainName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        token,
+      });
+
+      if (res.success) {
+        setProfileData(res.data);
+      }
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to fetch profile",
+        text2: err.message || "Something went wrong",
+      });
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, []);
 
-  const checkMPIN = async () => {
-    const exists = await hasMPIN();
-    setMpinExists(exists);
-  };
+  useEffect(() => {
+    hasMPIN().then(setMpinExists);
+  }, []);
 
-  const handleSetupMPIN = () => {
-    setShowMPINModal(true);
-  };
+  /* ---------------- IMAGE PICKER ---------------- */
+  const handleImagePicker = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) return;
 
-  const handleMPINSetup = async () => {
-    setShowMPINModal(false);
-    Alert.alert('Success', 'MPIN has been set up successfully');
-    await checkMPIN();
-  };
+      const result = await ImagePicker.launchImageLibraryAsync();
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const token = await SecureStore.getItemAsync("userToken");
+      if (result.canceled) return;
+      const image = result.assets[0];
 
-              // 📍 Get location
-              const location = await getLatLong();
+      const location = await getLatLong();
+      const token = await SecureStore.getItemAsync("userToken");
+      if (!location || !token) return;
 
-              // 🔐 Call logout API (best-effort)
-              if (token && location) {
-                await logoutApi({
-                  token,
-                  domain: domainName,
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                });
-              }
-            } catch (error) {
-              console.log("Logout API Error:", error);
-            } finally {
-              // 🧹 Always clear local data
-              await SecureStore.deleteItemAsync("userToken");
-              await SecureStore.deleteItemAsync("userData");
+      const res = await uploadProfilePhotoApi({
+        domain: domainName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        token,
+        imageUri: image.uri,
+      });
 
-              // 🔄 Update auth state
-              if (signOut) {
-                await signOut();
-              }
-
-              // 🚪 Redirect to login
-              router.replace("/(auth)/login");
-            }
+      if (res?.data?.photo_url) {
+        setProfileData((prev: any) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            photo: res.data.photo_url,
           },
-        },
-      ]
-    );
+        }));
+      }
+
+      Toast.show({
+        type: "success",
+        text1: "Profile Updated",
+        text2: "Profile photo uploaded successfully",
+      });
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Upload Failed",
+        text2: err.message || "Something went wrong",
+      });
+    }
   };
 
+  /* ---------------- LOGOUT ---------------- */
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await SecureStore.deleteItemAsync("userToken");
+          await SecureStore.deleteItemAsync("userData");
+          await signOut();
+          router.replace("/(auth)/login");
+        },
+      },
+    ]);
+  };
+
+  /* ---------------- MENU SECTIONS (UNCHANGED) ---------------- */
   const menuSections: { title: string; items: MenuItem[] }[] = [
     {
-      title: 'Account',
+      title: "Account",
       items: [
         {
           icon: UserIcon,
-          title: 'Edit Profile',
-          subtitle: 'Update your personal information',
-          onPress: () => { },
+          title: "Edit Profile",
+          subtitle: "Update your personal information",
+          onPress: () => setShowEditProfile(true),
           showChevron: true,
         },
         {
           icon: Lock,
-          title: mpinExists ? 'Change MPIN' : 'Setup MPIN',
-          subtitle: mpinExists ? 'Update your security PIN' : 'Set up your 4-digit security PIN',
-          onPress: handleSetupMPIN,
+          title: mpinExists ? "Change MPIN" : "Setup MPIN",
+          subtitle: mpinExists
+            ? "Update your security PIN"
+            : "Set up your 4-digit security PIN",
+          onPress: handleResetMpin,
           showChevron: true,
         },
       ],
     },
-    {
-      title: 'Preferences',
-      items: [
-        {
-          icon: Bell,
-          title: 'Notifications',
-          subtitle: 'Manage notification settings',
-          onPress: () => { },
-          showChevron: true,
-        },
-        {
-          icon: Settings,
-          title: 'Settings',
-          subtitle: 'App preferences and configuration',
-          onPress: () => { },
-          showChevron: true,
-        },
-      ],
-    },
-    {
-      title: 'Support',
-      items: [
-        {
-          icon: HelpCircle,
-          title: 'Help & Support',
-          subtitle: 'Get help with your account',
-          onPress: () => { },
-          showChevron: true,
-        },
-      ],
-    },
+    // {
+    //   title: "Preferences",
+    //   items: [
+    //     {
+    //       icon: Bell,
+    //       title: "Notifications",
+    //       subtitle: "Manage notification settings",
+    //       onPress: () => { },
+    //       showChevron: true,
+    //     },
+    //     {
+    //       icon: Settings,
+    //       title: "Settings",
+    //       subtitle: "App preferences and configuration",
+    //       onPress: () => { },
+    //       showChevron: true,
+    //     },
+    //   ],
+    // },
+    // {
+    //   title: "Support",
+    //   items: [
+    //     {
+    //       icon: HelpCircle,
+    //       title: "Help & Support",
+    //       subtitle: "Get help with your account",
+    //       onPress: () => { },
+    //       showChevron: true,
+    //     },
+    //   ],
+    // },
   ];
 
   return (
@@ -154,23 +272,50 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* -------- PROFILE CARD -------- */}
         <AnimatedCard style={styles.profileCard}>
-          <View style={styles.profileImageContainer}>
-            <Text style={styles.profileInitial}>
-              {user?.full_name?.charAt(0).toUpperCase()}
-            </Text>
+          <View style={styles.avatarWrapper}>
+            <Pressable onPress={handleImagePicker} style={styles.avatar}>
+              {profileData?.user?.photo ? (
+                <Image
+                  source={{ uri: profileData.user.photo }}
+                  style={{ width: "100%", height: "100%" }}
+                />
+              ) : (
+                <User size={32} color="#fff" />
+              )}
+            </Pressable>
+
+            <View style={styles.cameraIcon}>
+              <Camera size={12} color="#fff" />
+            </View>
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.full_name}</Text>
-            <Text style={styles.profileEmail}>
-              {user?.email || user?.phone || user?.username}
-            </Text>
+
+          <View style={{ flex: 1 }}>
+            {profileLoading ? (
+              <>
+                <View style={styles.skeletonName} />
+                <View style={styles.skeletonEmail} />
+              </>
+            ) : (
+              <>
+                <Text style={styles.profileName}>
+                  {profileData?.user?.name}
+                </Text>
+                <Text style={styles.profileEmail}>
+                  {profileData?.user?.email ||
+                    profileData?.user?.phone}
+                </Text>
+              </>
+            )}
           </View>
         </AnimatedCard>
 
+        {/* -------- MENU SECTIONS -------- */}
         {menuSections.map((section, sectionIndex) => (
           <View key={section.title} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
+
             <AnimatedCard style={styles.menuCard} delay={sectionIndex * 100}>
               {section.items.map((item, index) => {
                 const Icon = item.icon;
@@ -179,21 +324,29 @@ export default function ProfileScreen() {
                     key={item.title}
                     style={[
                       styles.menuItem,
-                      index !== section.items.length - 1 && styles.menuItemBorder
+                      index !== section.items.length - 1 &&
+                      styles.menuItemBorder,
                     ]}
                     onPress={item.onPress}
                   >
                     <View style={styles.menuIconContainer}>
                       <Icon size={20} color={theme.colors.primary[500]} />
                     </View>
+
                     <View style={styles.menuContent}>
                       <Text style={styles.menuTitle}>{item.title}</Text>
                       {item.subtitle && (
-                        <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                        <Text style={styles.menuSubtitle}>
+                          {item.subtitle}
+                        </Text>
                       )}
                     </View>
+
                     {item.showChevron && (
-                      <ChevronRight size={20} color={theme.colors.text.tertiary} />
+                      <ChevronRight
+                        size={20}
+                        color={theme.colors.text.tertiary}
+                      />
                     )}
                   </Pressable>
                 );
@@ -210,15 +363,35 @@ export default function ProfileScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <MPINModal
-        visible={showMPINModal}
-        onSuccess={handleMPINSetup}
-        onCancel={() => setShowMPINModal(false)}
+      <SetupMPINModal
+        visible={showSetupMPIN}
+        onClose={() => setShowSetupMPIN(false)}
+        onSuccess={() => {
+          setShowSetupMPIN(false);
+          Toast.show({
+            type: "success",
+            text1: "MPIN Updated",
+            text2: "Your MPIN has been reset successfully",
+          });
+        }}
+      />
+
+      <EditProfileModal
+        visible={showEditProfile}
+        profileData={profileData}
+        onClose={() => setShowEditProfile(false)}
+        onSuccess={(updatedUser) =>
+          setProfileData((prev: any) => ({
+            ...prev,
+            user: updatedUser,
+          }))
+        }
       />
     </View>
   );
 }
 
+/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -230,46 +403,64 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing[4],
   },
   title: {
-    fontSize: theme.typography.fontSizes['3xl'],
+    fontSize: theme.typography.fontSizes["3xl"],
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text.primary,
   },
   content: {
-    flex: 1,
     paddingHorizontal: theme.spacing[6],
   },
   profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing[4],
-    marginBottom: theme.spacing[6],
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
+    marginBottom: 16,
   },
-  profileImageContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: theme.borderRadius.full,
+  avatarWrapper: {
+    width: 56,
+    height: 56,
+    position: "relative",
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: theme.colors.primary[500],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing[4],
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
   },
-  profileInitial: {
-    fontSize: theme.typography.fontSizes['3xl'],
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text.inverse,
-  },
-  profileInfo: {
-    flex: 1,
+  cameraIcon: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    backgroundColor: "#000",
+    borderRadius: 12,
+    padding: 4,
   },
   profileName: {
-    fontSize: theme.typography.fontSizes.xl,
+    fontSize: theme.typography.fontSizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
   },
   profileEmail: {
-    fontSize: theme.typography.fontSizes.md,
+    fontSize: theme.typography.fontSizes.sm,
     color: theme.colors.text.secondary,
+    marginTop: 2,
+  },
+  skeletonName: {
+    width: 140,
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: theme.colors.border.light,
+    marginBottom: 6,
+  },
+  skeletonEmail: {
+    width: 180,
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: theme.colors.border.light,
   },
   section: {
     marginBottom: theme.spacing[6],
@@ -279,16 +470,15 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing[2],
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    textTransform: "uppercase",
   },
   menuCard: {
     padding: 0,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: theme.spacing[4],
   },
   menuItemBorder: {
@@ -300,8 +490,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: theme.spacing[3],
   },
   menuContent: {
@@ -311,25 +501,23 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.md,
     fontWeight: theme.typography.fontWeights.semibold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
   },
   menuSubtitle: {
     fontSize: theme.typography.fontSizes.sm,
     color: theme.colors.text.secondary,
   },
   logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     padding: theme.spacing[4],
-    borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.error[50],
+    borderRadius: theme.borderRadius.md,
     marginBottom: theme.spacing[6],
   },
   logoutText: {
-    fontSize: theme.typography.fontSizes.md,
-    fontWeight: theme.typography.fontWeights.semibold,
+    marginLeft: 8,
     color: theme.colors.error[500],
-    marginLeft: theme.spacing[2],
+    fontWeight: theme.typography.fontWeights.semibold,
   },
 });

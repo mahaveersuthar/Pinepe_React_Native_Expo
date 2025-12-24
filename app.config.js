@@ -9,58 +9,98 @@ const PROJECT_IDS = {
 
 export default ({ config }) => {
   const metadataPath = path.join(__dirname, "tenant-metadata.json");
+
+  // Generated tenant assets (created by fetch-tenant.js)
   const iconPath = "./assets/generated/icon.png";
+  const splashPath = "./assets/generated/icon.png";
 
   let tenant = null;
+
   if (fs.existsSync(metadataPath)) {
     tenant = JSON.parse(fs.readFileSync(metadataPath, "utf-8"));
   }
 
-  if (!tenant) return config;
+  // Fallback (dev / safety)
+  if (!tenant) {
+    console.warn("⚠️ No tenant-metadata.json found. Using default config.");
+    return config;
+  }
 
-  const tenantSlug = tenant.name.toLowerCase().replace(/\s/g, "-");
+  const tenantSlug = tenant.name
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 
   return {
     ...config,
+
+    /** ===============================
+     *  APP IDENTITY
+     *  =============================== */
     name: tenant.name,
     slug: tenantSlug,
     icon: iconPath,
 
+    /** ===============================
+     *  SPLASH (CRITICAL FOR WHITE-LABEL)
+     *  =============================== */
+    splash: {
+      image: splashPath,
+      resizeMode: "contain",
+      backgroundColor: "#FFFFFF",
+    },
+
+    /** ===============================
+     *  PLUGINS
+     *  =============================== */
     plugins: [
       ...(config.plugins || []),
       "expo-secure-store",
     ],
 
+    /** ===============================
+     *  iOS CONFIG
+     *  =============================== */
     ios: {
       ...config.ios,
       bundleIdentifier: `in.pinepe.${tenantSlug}`,
       icon: iconPath,
 
-      /** ✅ LOCATION PERMISSION (iOS) */
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           "We need your location to show nearby services and offers.",
+        NSPhotoLibraryUsageDescription:
+          "Allow access to your photos to upload profile picture",
+        NSCameraUsageDescription:
+          "Allow camera access to take profile picture",
       },
     },
 
+    /** ===============================
+     *  ANDROID CONFIG
+     *  =============================== */
     android: {
       ...config.android,
       package: `in.pinepe.${tenantSlug}`,
       icon: iconPath,
+
       adaptiveIcon: {
         foregroundImage: iconPath,
         backgroundColor: "#FFFFFF",
       },
 
-      /** ✅ LOCATION PERMISSION (Android) */
       permissions: [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
       ],
     },
 
+    /** ===============================
+     *  EXTRA (TENANT + EAS)
+     *  =============================== */
     extra: {
       tenantData: tenant,
+
       eas: {
         projectId:
           PROJECT_IDS[tenantSlug] ||

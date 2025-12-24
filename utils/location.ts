@@ -1,25 +1,57 @@
 // src/utils/location.ts
-
 import * as Location from "expo-location";
 
-export const getLatLong = async () => {
+type LatLong = {
+  latitude: string;
+  longitude: string;
+};
+
+
+let cachedLocation: LatLong | null = null;
+
+export const getLatLong = async (): Promise<LatLong | null> => {
   try {
-    console.log("go to permssion")
+    /** ✅ Use memory cache */
+    if (cachedLocation) {
+      console.log("cached");
+      return cachedLocation;
+    }
+
+    /** ✅ Check permission */
     const { status } =
-      await Location.requestForegroundPermissionsAsync();
-      console.log(status)
+      await Location.getForegroundPermissionsAsync();
 
-    if (status !== "granted") return null;
+    let finalStatus = status;
 
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
+    if (status !== "granted") {
+      const permission =
+        await Location.requestForegroundPermissionsAsync();
+      finalStatus = permission.status;
+    }
 
-    return {
+    if (finalStatus !== "granted") {
+      return null;
+    }
+
+    /** ✅ Fetch location */
+    const location =
+      await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+    cachedLocation = {
       latitude: String(location.coords.latitude),
       longitude: String(location.coords.longitude),
     };
-  } catch {
+
+    return cachedLocation;
+  } catch (err) {
+    console.error("Location error:", err);
     return null;
   }
+};
+
+/** Optional manual clear (logout, account switch) */
+export const clearCachedLocation = () => {
+  cachedLocation = null;
 };

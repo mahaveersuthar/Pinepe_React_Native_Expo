@@ -1,233 +1,309 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  Pressable,
+  TextInput,
+} from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withSequence,
   withTiming,
-} from 'react-native-reanimated';
-import { X } from 'lucide-react-native';
-import { theme } from '@/theme';
-import { useAuth } from '@/context/AuthContext';
+  withSequence,
+} from "react-native-reanimated";
+import { X } from "lucide-react-native";
+import Toast from "react-native-toast-message";
+import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
 
-interface MPINModalProps {
+import { theme } from "@/theme";
+import { getLatLong } from "@/utils/location";
+import { setMpinApi } from "@/app/api/mpin.api";
+
+interface Props {
   visible: boolean;
+  onClose: () => void;
   onSuccess: () => void;
-  onCancel: () => void;
 }
 
-const MPIN_LENGTH = 4;
-
-export function MPINModal({ visible, onSuccess, onCancel }: MPINModalProps) {
-  const { verifyMPIN } = useAuth();
-  const [mpin, setMpin] = useState<string[]>(Array(MPIN_LENGTH).fill(''));
-  const [error, setError] = useState('');
+export function SetupMPINModal({
+  visible,
+  onClose,
+  onSuccess,
+}: Props) {
   const translateY = useSharedValue(500);
-  const shakeAnimation = useSharedValue(0);
+  const shake = useSharedValue(0);
 
+  const tenantData = Constants.expoConfig?.extra?.tenantData;
+  const domainName = tenantData?.domain || "laxmeepay.com";
+
+  const [otp, setOtp] = useState("");
+  const [mpin, setMpin] = useState("");
+  const [confirmMpin, setConfirmMpin] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  /* ---------------- ANIMATION ---------------- */
   useEffect(() => {
+    translateY.value = visible
+      ? withSpring(0, { damping: 20 })
+      : withTiming(500);
+
     if (visible) {
-      translateY.value = withSpring(0, { damping: 20 });
-    } else {
-      translateY.value = withTiming(500);
-      setMpin(Array(MPIN_LENGTH).fill(''));
-      setError('');
+      setOtp("");
+      setMpin("");
+      setConfirmMpin("");
     }
   }, [visible]);
-
-  const handleNumberPress = (num: number) => {
-    const emptyIndex = mpin.findIndex((digit) => digit === '');
-    if (emptyIndex !== -1) {
-      const newMpin = [...mpin];
-      newMpin[emptyIndex] = num.toString();
-      setMpin(newMpin);
-      setError('');
-
-      if (emptyIndex === MPIN_LENGTH - 1) {
-        setTimeout(async () => {
-          const mpinValue = newMpin.join('');
-          const isValid = await verifyMPIN(mpinValue);
-
-          if (isValid) {
-            onSuccess();
-            setMpin(Array(MPIN_LENGTH).fill(''));
-          } else {
-            setError('Incorrect MPIN');
-            shakeAnimation.value = withSequence(
-              withTiming(-10, { duration: 50 }),
-              withTiming(10, { duration: 50 }),
-              withTiming(-10, { duration: 50 }),
-              withTiming(10, { duration: 50 }),
-              withTiming(0, { duration: 50 })
-            );
-            setTimeout(() => {
-              setMpin(Array(MPIN_LENGTH).fill(''));
-            }, 500);
-          }
-        }, 100);
-      }
-    }
-  };
-
-  const handleDelete = () => {
-    const lastFilledIndex = mpin.findIndex((digit) => digit === '') - 1;
-    const indexToDelete = lastFilledIndex >= 0 ? lastFilledIndex : MPIN_LENGTH - 1;
-
-    if (mpin[indexToDelete] !== '') {
-      const newMpin = [...mpin];
-      newMpin[indexToDelete] = '';
-      setMpin(newMpin);
-      setError('');
-    }
-  };
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
   const shakeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shakeAnimation.value }],
+    transform: [{ translateX: shake.value }],
   }));
 
+  const triggerShake = () => {
+    shake.value = withSequence(
+      withTiming(-10, { duration: 50 }),
+      withTiming(10, { duration: 50 }),
+      withTiming(0, { duration: 50 })
+    );
+  };
+
+  /* ---------------- SET MPIN ---------------- */
+  const handleSetMpin = async () => {
+    if (otp.length !== 4) {
+      triggerShake();
+      Toast.show({
+        type: "error",
+        text1: "Invalid OTP",
+        text2: "Please enter 4-digit OTP",
+      });
+      return;
+    }
+
+    if (mpin.length !== 4 || confirmMpin.length !== 4) {
+      triggerShake();
+      Toast.show({
+        type: "error",
+        text1: "Invalid MPIN",
+        text2: "MPIN must be 4 digits",
+      });
+      return;
+    }
+
+    if (mpin !== confirmMpin) {
+      triggerShake();
+      Toast.show({
+        type: "error",
+        text1: "MPIN Mismatch",
+        text2: "MPIN and Confirm MPIN must match",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const location = await getLatLong();
+      const token = await SecureStore.getItemAsync("userToken");
+
+      if (!location || !token) return;
+
+      const res = await setMpinApi({
+        domain: domainName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        token,
+        otp,
+        mpin,
+      });
+
+      if (res.success) {
+        Toast.show({
+          type: "success",
+          text1: "MPIN Updated",
+          text2: res.message || "MPIN set successfully",
+        });
+
+        onSuccess();
+        onClose();
+      }
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed",
+        text2: err.message || "Unable to set MPIN",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ---------------- UI ---------------- */
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onCancel}
-    >
+    <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <Animated.View style={[styles.container, animatedStyle]}>
+          {/* HEADER */}
           <View style={styles.header}>
-            <Text style={styles.title}>Enter MPIN</Text>
-            <Pressable onPress={onCancel}>
-              <X size={24} color={theme.colors.text.primary} />
+            <Text style={styles.title}>Reset MPIN</Text>
+            <Pressable onPress={onClose}>
+              <X size={22} color={theme.colors.text.primary} />
             </Pressable>
           </View>
 
-          <Text style={styles.subtitle}>Enter your 4-digit MPIN to continue</Text>
+          <Text style={styles.subtitle}>
+            Enter the OTP sent to your registered email to reset your MPIN.
+          </Text>
 
-          <Animated.View style={[styles.mpinDisplay, shakeStyle]}>
-            {mpin.map((digit, index) => (
-              <View
-                key={index}
-                style={[styles.mpinDot, digit && styles.mpinDotFilled]}
-              />
-            ))}
+          <Animated.View style={shakeStyle}>
+            <Input
+              label="Enter OTP"
+              value={otp}
+              keyboardType="number-pad"
+              maxLength={4}
+              onChangeText={(v: string) =>
+                /^\d*$/.test(v) && setOtp(v)
+              }
+            />
+
+            <Input
+              label="Enter New 4-digit MPIN"
+              value={mpin}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={4}
+              onChangeText={(v: string) =>
+                /^\d*$/.test(v) && setMpin(v)
+              }
+            />
+
+            <Input
+              label="Confirm New 4-digit MPIN"
+              value={confirmMpin}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={4}
+              onChangeText={(v: string) =>
+                /^\d*$/.test(v) && setConfirmMpin(v)
+              }
+            />
           </Animated.View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <View style={styles.keypad}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-              <Pressable
-                key={num}
-                style={styles.keypadButton}
-                onPress={() => handleNumberPress(num)}
-              >
-                <Text style={styles.keypadText}>{num}</Text>
-              </Pressable>
-            ))}
-            <View style={styles.keypadButton} />
-            <Pressable
-              style={styles.keypadButton}
-              onPress={() => handleNumberPress(0)}
-            >
-              <Text style={styles.keypadText}>0</Text>
+          {/* ACTIONS */}
+          <View style={styles.actions}>
+            <Pressable style={styles.backBtn} onPress={onClose}>
+              <Text style={styles.backText}>Back</Text>
             </Pressable>
+
             <Pressable
-              style={styles.keypadButton}
-              onPress={handleDelete}
+              style={[
+                styles.primaryBtn,
+                loading && { opacity: 0.6 },
+              ]}
+              onPress={handleSetMpin}
+              disabled={loading}
             >
-              <Text style={styles.keypadText}>⌫</Text>
+              <Text style={styles.primaryText}>
+                {loading ? "Setting..." : "Set New MPIN"}
+              </Text>
             </Pressable>
           </View>
-
-          <Pressable onPress={onCancel}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </Pressable>
         </Animated.View>
       </View>
     </Modal>
   );
 }
 
+/* ---------------- INPUT ---------------- */
+const Input = ({ label, ...props }: any) => {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        {...props}
+        style={[
+          styles.input,
+          focused && { borderColor: theme.colors.primary[500] },
+        ]}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      />
+    </View>
+  );
+};
+
+/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: theme.colors.overlay,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   container: {
     backgroundColor: theme.colors.background.light,
-    borderTopLeftRadius: theme.borderRadius['2xl'],
-    borderTopRightRadius: theme.borderRadius['2xl'],
-    paddingHorizontal: theme.spacing[6],
-    paddingTop: theme.spacing[6],
-    paddingBottom: theme.spacing[10],
+    borderTopLeftRadius: theme.borderRadius["2xl"],
+    borderTopRightRadius: theme.borderRadius["2xl"],
+    padding: theme.spacing[6],
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing[2],
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
   title: {
-    fontSize: theme.typography.fontSizes['2xl'],
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text.primary,
+    fontSize: theme.typography.fontSizes["2xl"],
+    fontWeight: "700",
   },
   subtitle: {
-    fontSize: theme.typography.fontSizes.md,
+    fontSize: theme.typography.fontSizes.sm,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing[8],
+    marginBottom: 16,
   },
-  mpinDisplay: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: theme.spacing[4],
-    marginBottom: theme.spacing[8],
+  label: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginBottom: 4,
   },
-  mpinDot: {
-    width: 16,
-    height: 16,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 2,
+  input: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
     borderColor: theme.colors.border.medium,
   },
-  mpinDotFilled: {
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  backBtn: {
+    flex: 1,
+    padding: 14,
+    backgroundColor: theme.colors.border.light,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  backText: {
+    fontWeight: "600",
+  },
+  primaryBtn: {
+    flex: 1,
+    padding: 14,
     backgroundColor: theme.colors.primary[500],
-    borderColor: theme.colors.primary[500],
+    borderRadius: 8,
+    alignItems: "center",
   },
-  errorText: {
-    color: theme.colors.error[500],
-    fontSize: theme.typography.fontSizes.sm,
-    textAlign: 'center',
-    marginBottom: theme.spacing[4],
-  },
-  keypad: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing[6],
-  },
-  keypadButton: {
-    width: '30%',
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing[3],
-  },
-  keypadText: {
-    fontSize: theme.typography.fontSizes['3xl'],
-    fontWeight: theme.typography.fontWeights.medium,
-    color: theme.colors.text.primary,
-  },
-  cancelText: {
-    fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.primary[500],
-    fontWeight: theme.typography.fontWeights.semibold,
-    textAlign: 'center',
+  primaryText: {
+    color: "#fff",
+    fontWeight: "700",
   },
 });

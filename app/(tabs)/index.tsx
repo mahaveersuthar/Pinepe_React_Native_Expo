@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Wallet, ArrowUpRight, ArrowDownLeft, Zap, CreditCard } from 'lucide-react-native';
 import { theme } from '@/theme';
 import { useAuth } from '@/context/AuthContext';
 import { AnimatedCard } from '@/components/animated/AnimatedCard';
+import { getLatLong } from '@/utils/location';
 
 const mockServices = [
   { id: '1', name: 'Mobile Recharge', price: 10 },
@@ -23,6 +24,12 @@ export default function HomeScreen() {
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
   };
+
+  useEffect(() => {
+      (async () => {
+        await getLatLong();
+      })();
+    }, []);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

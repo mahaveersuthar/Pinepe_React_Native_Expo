@@ -4,7 +4,7 @@ import { Search } from 'lucide-react-native';
 import { theme } from '@/theme';
 import { AnimatedCard } from '@/components/animated/AnimatedCard';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
-import { MPINModal } from '@/components/ui/MPINModal';
+
 
 const mockServices = [
   {
@@ -127,14 +127,7 @@ export default function ServicesScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <MPINModal
-        visible={showMPINModal}
-        onSuccess={handleMPINSuccess}
-        onCancel={() => {
-          setShowMPINModal(false);
-          setSelectedService(null);
-        }}
-      />
+      
     </View>
   );
 }
