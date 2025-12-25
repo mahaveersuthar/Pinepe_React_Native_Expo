@@ -1,334 +1,325 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { Calendar, ArrowUpRight, ArrowDownLeft, Filter } from 'lucide-react-native';
-import { theme } from '@/theme';
-import { AnimatedCard } from '@/components/animated/AnimatedCard';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  TextInput,
+  FlatList,
+  RefreshControl,
+} from "react-native";
+import {
+  Calendar,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Filter,
+  Clock,
+  XCircle,
+  Search,
+} from "lucide-react-native";
+import { theme } from "@/theme";
+import { AnimatedCard } from "@/components/animated/AnimatedCard";
+import { getLatLong } from "@/utils/location";
+import Constants from "expo-constants";
+import * as SecureStore from "expo-secure-store";
+import { getTransactionsApi } from "../api/transaction.api";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { TransactionDetailsModal } from "@/components/ui/TransactionDetailModal";
+import { TransactionFilterModal } from "@/components/ui/TransactionFilterModal";
 
-const mockTransactions = [
-  {
-    id: '1',
-    description: 'Mobile Recharge',
-    amount: 10.00,
-    type: 'purchase',
-    status: 'completed' as const,
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: '2',
-    description: 'DTH Recharge',
-    amount: 15.00,
-    type: 'purchase',
-    status: 'completed' as const,
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: '3',
-    description: 'Electricity Bill',
-    amount: 50.00,
-    type: 'purchase',
-    status: 'pending' as const,
-    created_at: new Date(Date.now() - 10800000).toISOString(),
-  },
-  {
-    id: '4',
-    description: 'Refund',
-    amount: 25.00,
-    type: 'refund',
-    status: 'completed' as const,
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
+type FilterType = "all" | "success" | "pending" | "failed";
+
+// Define a constant for card height to optimize rendering
+const ITEM_HEIGHT = 100; 
 
 export default function TransactionsScreen() {
-  const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all');
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedTxn, setSelectedTxn] = useState<any>(null);
+  const [showTxnModal, setShowTxnModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [isFilterApplied, setIsFilterApplied] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<{
+    type?: "credit" | "debit";
+    fromDate?: Date;
+    toDate?: Date;
+    status?: "completed" | "pending" | "failed";
+  } | null>(null);
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isSearchActive, setIsSearchActive] = useState(false);
 
-  const filteredTransactions = filter === 'all'
-    ? mockTransactions
-    : mockTransactions.filter(t => t.status === filter);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  
+  const userToken = useRef<string | null>(null);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+  /* ---------------- HELPERS ---------------- */
 
-    if (date.toDateString() === today.toDateString()) {
-      return `Today, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-  };
+  const formatDate = useCallback((dateString: string) => {
+    const date = new Date(dateString.replace(" ", "T"));
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, []);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
-      case 'completed':
-        return theme.colors.success[500];
-      case 'pending':
-        return theme.colors.warning[500];
-      case 'failed':
-        return theme.colors.error[500];
-      default:
-        return theme.colors.text.secondary;
+      case "completed": return theme.colors.success[500];
+      case "pending": return theme.colors.warning[500];
+      case "failed": return theme.colors.error[500];
+      default: return theme.colors.text.secondary;
+    }
+  }, []);
+
+  /* ---------------- API LOGIC ---------------- */
+
+  const fetchTransactions = async (
+    targetPage: number = 1,
+    isLoadMore: boolean = false,
+    isRefreshing: boolean = false
+  ) => {
+    try {
+      if (isRefreshing) setRefreshing(true);
+      else if (isLoadMore) setLoadingMore(true);
+      else setLoading(true);
+
+      const location = await getLatLong();
+      if (!userToken.current) {
+        userToken.current = await SecureStore.getItemAsync("userToken");
+      }
+
+      if (!location || !userToken.current) {
+        setLoading(false);
+        return;
+      }
+
+      const payload: any = {
+        domain: Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
+        latitude: location.latitude,
+        longitude: location.longitude,
+        token: userToken.current,
+        page: targetPage,
+        perPage: 15, // Increased slightly for better screen filling
+      };
+
+      const STATUS_MAP: any = { all: undefined, success: "completed", pending: "pending", failed: "failed" };
+      const apiStatus = STATUS_MAP[filter];
+      if (apiStatus) payload.status = apiStatus;
+      if (debouncedSearch.trim()) payload.transaction_id = debouncedSearch.trim();
+      if (appliedFilters?.type) payload.transaction_type = appliedFilters.type;
+      if (appliedFilters?.fromDate) payload.from_date = appliedFilters.fromDate.toISOString().split("T")[0];
+      if (appliedFilters?.toDate) payload.to_date = appliedFilters.toDate.toISOString().split("T")[0];
+
+      const res = await getTransactionsApi(payload);
+
+      if (res.success) {
+        const newItems = res.data.items || [];
+        setTransactions(prev => (targetPage === 1 ? newItems : [...prev, ...newItems]));
+        setHasMore(newItems.length >= 15);
+        setPage(targetPage);
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      setRefreshing(false);
     }
   };
+
+  /* ---------------- EFFECTS ---------------- */
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    fetchTransactions(1, false);
+  }, [filter, appliedFilters, debouncedSearch]);
+
+  const handleRefresh = () => {
+    setHasMore(true);
+    fetchTransactions(1, false, true);
+  };
+
+  const handleLoadMore = () => {
+    if (!loading && !loadingMore && hasMore && !refreshing) {
+      fetchTransactions(page + 1, true);
+    }
+  };
+
+  /* ---------------- RENDER OPTIMIZATIONS ---------------- */
+
+  const renderItem = useCallback(({ item, index }: { item: any, index: number }) => {
+    const credit = item.transaction_type === "credit";
+    const statusColor = getStatusColor(item.status);
+
+    return (
+      <Pressable
+        onPress={() => {
+          setSelectedTxn(item);
+          setShowTxnModal(true);
+        }}
+        style={styles.cardContainer}
+      >
+        <AnimatedCard style={styles.transactionCard} delay={0}> 
+          <View style={styles.cardRow}>
+            <View style={[styles.iconWrapper, {
+              backgroundColor: item.status === 'pending' ? theme.colors.warning[50] 
+                : item.status === 'failed' ? theme.colors.error[50]
+                : credit ? theme.colors.success[50] : theme.colors.error[50]
+            }]}>
+              {item.status === 'pending' ? <Clock size={18} color={theme.colors.warning[500]} />
+                : item.status === 'failed' ? <XCircle size={18} color={theme.colors.error[500]} />
+                : credit ? <ArrowDownLeft size={18} color={theme.colors.success[500]} />
+                : <ArrowUpRight size={18} color={theme.colors.error[500]} />}
+            </View>
+
+            <View style={styles.details}>
+              <Text style={styles.txnId} numberOfLines={1}>{item.transaction_id}</Text>
+              <Text style={styles.txnDate}>{formatDate(item.created_at)}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
+                <Text style={[styles.statusText, { color: statusColor }]}>
+                  {item.status.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={[styles.amount, { color: credit ? theme.colors.success[500] : theme.colors.error[500] }]}>
+              {credit ? "+" : "-"}₹{Number(item.amount).toFixed(2)}
+            </Text>
+          </View>
+        </AnimatedCard>
+      </Pressable>
+    );
+  }, [formatDate, getStatusColor]);
+
+  // Tell FlatList the exact size of items so it doesn't have to calculate them dynamically
+  const getItemLayout = useCallback((data: any, index: number) => (
+    { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
+  ), []);
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <SafeAreaView style={styles.headerSafe}>
         <Text style={styles.title}>Transactions</Text>
-        <Pressable style={styles.filterButton}>
-          <Filter size={20} color={theme.colors.text.primary} />
+        <Pressable
+          style={[styles.filterIcon, isFilterApplied && { backgroundColor: theme.colors.primary[50] }]}
+          onPress={() => setShowFilterModal(true)}
+        >
+          <Filter size={18} color={isFilterApplied ? theme.colors.primary[500] : theme.colors.text.primary} />
         </Pressable>
+      </SafeAreaView>
+
+      {/* SEARCH BOX & FILTERS (STAY THE SAME) */}
+      <View style={{ marginHorizontal: 16 }}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={["all", "success", "pending", "failed"]}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => (
+            <Pressable
+              style={[styles.filterChip, filter === item && styles.filterChipActive]}
+              onPress={() => setFilter(item as FilterType)}
+            >
+              <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
+                {item.toUpperCase()}
+              </Text>
+            </Pressable>
+          )}
+          contentContainerStyle={{ alignItems: 'center', height: 50 }}
+        />
+        <View style={styles.searchBox}>
+          <Search size={18} color={theme.colors.text.tertiary} />
+          <TextInput
+            placeholder="Search by Txn ID"
+            placeholderTextColor={theme.colors.text.tertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+          />
+        </View>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 24,
-        }}
-        style={{
-          marginBottom: 16,
-          maxHeight: 40, 
-        }}
-      >
-        <Pressable
-          style={{
-            paddingHorizontal: 16,
-            paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: filter === 'all' ? theme.colors.primary[500] : theme.colors.background.light,
-            marginRight: 8,
-          }}
-          onPress={() => setFilter('all')}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: filter === 'all' ? theme.colors.text.inverse : theme.colors.text.secondary,
-            }}
-          >
-            All
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={{
-            paddingHorizontal: 16,
-            paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: filter === 'completed' ? theme.colors.primary[500] : theme.colors.background.light,
-            marginRight: 8,
-          }}
-          onPress={() => setFilter('completed')}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: filter === 'completed' ? theme.colors.text.inverse : theme.colors.text.secondary,
-            }}
-          >
-            Completed
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={{
-            paddingHorizontal: 16,
-            paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: filter === 'pending' ? theme.colors.primary[500] : theme.colors.background.light,
-          }}
-          onPress={() => setFilter('pending')}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: filter === 'pending' ? theme.colors.text.inverse : theme.colors.text.secondary,
-            }}
-          >
-            Pending
-          </Text>
-        </Pressable>
-      </ScrollView>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {filteredTransactions.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Calendar size={64} color={theme.colors.text.tertiary} />
-            <Text style={styles.emptyTitle}>No Transactions</Text>
-            <Text style={styles.emptySubtitle}>Your transactions will appear here</Text>
+      <View style={{ flex: 1, marginTop: 10 }}>
+        {loading && page === 1 ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={theme.colors.primary[500]} />
           </View>
         ) : (
-          filteredTransactions.map((transaction, index) => (
-            <AnimatedCard key={transaction.id} style={styles.transactionCard} delay={index * 50}>
-              <View style={styles.transactionHeader}>
-                <View style={[
-                  styles.transactionIcon,
-                  { backgroundColor: transaction.type === 'purchase' ? theme.colors.error[50] : theme.colors.success[50] }
-                ]}>
-                  {transaction.type === 'purchase' ? (
-                    <ArrowUpRight size={20} color={theme.colors.error[500]} />
-                  ) : (
-                    <ArrowDownLeft size={20} color={theme.colors.success[500]} />
-                  )}
+          <FlatList
+            data={transactions}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id.toString()}
+            showsVerticalScrollIndicator={false}
+            // --- Performance Props ---
+            initialNumToRender={8}     // Load small amount first
+            windowSize={11}            // Pre-render 5 screens worth of data ahead
+            maxToRenderPerBatch={10}   // Don't overwhelm the UI thread
+            removeClippedSubviews={true} // Free up memory for off-screen items
+            getItemLayout={getItemLayout} // Skip layout measurement (Fast!)
+            
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5} // Start loading next page when half-way down
+            
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.primary[500]} />
+            }
+            ListEmptyComponent={
+              !loading ? (
+                <View style={styles.center}>
+                  <Calendar size={64} color={theme.colors.text.tertiary} />
+                  <Text style={styles.emptyTitle}>No Transactions</Text>
                 </View>
-                <View style={styles.transactionDetails}>
-                  <Text style={styles.transactionTitle}>{transaction.description || 'Transaction'}</Text>
-                  <Text style={styles.transactionDate}>{formatDate(transaction.created_at)}</Text>
-                </View>
-              </View>
-
-              <View style={styles.transactionFooter}>
-                <Text style={[
-                  styles.transactionAmount,
-                  { color: transaction.type === 'purchase' ? theme.colors.error[500] : theme.colors.success[500] }
-                ]}>
-                  {transaction.type === 'purchase' ? '-' : '+'}₹{transaction.amount.toFixed(2)}
-                </Text>
-                <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(transaction.status)}20` }]}>
-                  <Text style={[styles.statusText, { color: getStatusColor(transaction.status) }]}>
-                    {transaction.status}
-                  </Text>
-                </View>
-              </View>
-            </AnimatedCard>
-          ))
+              ) : null
+            }
+            ListFooterComponent={() => loadingMore ? <ActivityIndicator style={{ padding: 20 }} /> : <View style={{ height: 80 }} />}
+            contentContainerStyle={styles.listContent}
+          />
         )}
+      </View>
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      {/* MODALS */}
+      <TransactionFilterModal visible={showFilterModal} onClose={() => setShowFilterModal(false)} onApply={(f:any) => { setAppliedFilters(f); setIsFilterApplied(true); }} onReset={() => { setAppliedFilters(null); setIsFilterApplied(false); }} />
+      <TransactionDetailsModal visible={showTxnModal} transaction={selectedTxn} onClose={() => setShowTxnModal(false)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.dark,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[6],
-    paddingTop: theme.spacing[12],
-    paddingBottom: theme.spacing[4],
-  },
-  title: {
-    fontSize: theme.typography.fontSizes['3xl'],
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text.primary,
-  },
-  filterButton: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.background.light,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...theme.shadows.sm,
-  },
-  filterContainer: {
-    paddingHorizontal: theme.spacing[6],
-    marginBottom: theme.spacing[4],
-  },
-  filterChip: {
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[2],
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.background.light,
-    marginRight: theme.spacing[2],
-  },
-  filterChipActive: {
-    backgroundColor: theme.colors.primary[500],
-  },
-  filterChipText: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontWeight: theme.typography.fontWeights.medium,
-    color: theme.colors.text.secondary,
-  },
-  filterContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterChipTextActive: {
-    color: theme.colors.text.inverse,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: theme.spacing[6],
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing[16],
-  },
-  emptyTitle: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing[4],
-    marginBottom: theme.spacing[2],
-  },
-  emptySubtitle: {
-    fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.text.secondary,
-  },
-  transactionCard: {
-    marginBottom: theme.spacing[3],
-    padding: theme.spacing[4],
-  },
-  transactionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing[3],
-  },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing[3],
-  },
-  transactionDetails: {
-    flex: 1,
-  },
-  transactionTitle: {
-    fontSize: theme.typography.fontSizes.md,
-    fontWeight: theme.typography.fontWeights.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
-  },
-  transactionDate: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.text.secondary,
-  },
-  transactionFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  transactionAmount: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-  },
-  statusBadge: {
-    paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[1],
-    borderRadius: theme.borderRadius.full,
-  },
-  statusText: {
-    fontSize: theme.typography.fontSizes.xs,
-    fontWeight: theme.typography.fontWeights.semibold,
-    textTransform: 'capitalize',
-  },
+  container: { flex: 1, backgroundColor: theme.colors.background.dark },
+  headerSafe: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
+  title: { fontSize: 24, fontWeight: "700", color: theme.colors.text.primary },
+  filterIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: theme.colors.background.light, alignItems: "center", justifyContent: "center" },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: theme.colors.background.light, marginRight: 8, height: 36, justifyContent: 'center' },
+  filterChipActive: { backgroundColor: theme.colors.primary[500] },
+  filterText: { fontSize: 12, fontWeight: "600", color: theme.colors.text.secondary },
+  filterTextActive: { color: "#fff" },
+  searchBox: { flexDirection: "row", alignItems: "center", gap: 10, height: 44, paddingHorizontal: 12, borderRadius: 10, backgroundColor: theme.colors.background.light, marginTop: 10 },
+  searchInput: { flex: 1, color: theme.colors.text.primary },
+  listContent: { paddingHorizontal: 16, flexGrow: 1 ,paddingBottom:50},
+  center: { flex: 1, justifyContent: "center", alignItems: "center", minHeight: 300 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: theme.colors.text.primary, marginTop: 16 },
+  cardContainer: { height: ITEM_HEIGHT, justifyContent: 'center' }, // Fixed height container
+  transactionCard: { padding: 16, backgroundColor: theme.colors.background.light, borderRadius: 12 },
+  cardRow: { flexDirection: "row", alignItems: "center" },
+  iconWrapper: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", marginRight: 12 },
+  details: { flex: 1 },
+  txnId: { fontSize: 14, fontWeight: "600", color: theme.colors.text.primary },
+  txnDate: { fontSize: 12, color: theme.colors.text.secondary, marginTop: 2 },
+  statusBadge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginTop: 6 },
+  statusText: { fontSize: 10, fontWeight: "700" },
+  amount: { fontSize: 16, fontWeight: "700" },
 });

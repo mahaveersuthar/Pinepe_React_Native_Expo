@@ -173,6 +173,7 @@ export default function OTPScreen() {
         }
       );
 
+
       Toast.show({
         type: "success",
         text1: "Verified",
@@ -189,6 +190,7 @@ export default function OTPScreen() {
             JSON.stringify(json.data.user)
           );
         }
+        console.log("==token==",json.data?.access_token);
         router.replace("/(tabs)");
       } else {
         router.replace({

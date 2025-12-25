@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Wallet, ArrowUpRight, ArrowDownLeft, Zap, CreditCard } from 'lucide-react-native';
@@ -6,6 +6,10 @@ import { theme } from '@/theme';
 import { useAuth } from '@/context/AuthContext';
 import { AnimatedCard } from '@/components/animated/AnimatedCard';
 import { getLatLong } from '@/utils/location';
+import * as SecureStore from "expo-secure-store";
+import { getTransactionsApi } from '../api/transaction.api';
+import Constants from "expo-constants";
+import Toast from 'react-native-toast-message';
 
 const mockServices = [
   { id: '1', name: 'Mobile Recharge', price: 10 },
@@ -17,6 +21,10 @@ const mockServices = [
 export default function HomeScreen() {
   const { user } = useAuth();
   const balance = 2540.50;
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -25,11 +33,63 @@ export default function HomeScreen() {
     return 'Good Evening';
   };
 
+  const fetchTransactions = async (pageNumber = 1) => {
+    try {
+      setTransactionsLoading(true);
+
+      const location = await getLatLong();
+      const token = await SecureStore.getItemAsync("userToken");
+      const tenantData = Constants.expoConfig?.extra?.tenantData;
+      const domainName = tenantData?.domain || "laxmeepay.com";
+
+      if (!location || !token) return;
+
+      const res = await getTransactionsApi({
+        domain: domainName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        token,
+        page: pageNumber,
+        perPage: 10,
+      });
+
+      if (res.success) {
+        const items = res.data.items;
+        console.log("==items==",items)
+
+        setTransactions((prev) =>
+          pageNumber === 1 ? items : [...prev, ...items]
+        );
+
+        setPage(res.data.meta.current_page);
+        setHasMore(
+          res.data.meta.current_page < res.data.meta.last_page
+        );
+      }
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to fetch transactions",
+        text2: err.message || "Something went wrong",
+      });
+    } finally {
+      setTransactionsLoading(false);
+    }
+  };
+
+
   useEffect(() => {
-      (async () => {
-        await getLatLong();
-      })();
-    }, []);
+    {console.log("hello")}
+    fetchTransactions(1);
+  }, []);
+
+
+
+  useEffect(() => {
+    (async () => {
+      await getLatLong();
+    })();
+  }, []);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
