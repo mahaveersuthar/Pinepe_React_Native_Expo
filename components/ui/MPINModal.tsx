@@ -6,6 +6,8 @@ import {
   Modal,
   Pressable,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -21,7 +23,7 @@ import Constants from "expo-constants";
 
 import { theme } from "@/theme";
 import { getLatLong } from "@/utils/location";
-import { setMpinApi } from "@/app/api/mpin.api";
+import { sendMpinOtpApi, setMpinApi } from "@/app/api/mpin.api";
 
 interface Props {
   visible: boolean;
@@ -55,6 +57,7 @@ export function SetupMPINModal({
       setOtp("");
       setMpin("");
       setConfirmMpin("");
+      handleResetMpin();
     }
   }, [visible]);
 
@@ -72,6 +75,44 @@ export function SetupMPINModal({
       withTiming(10, { duration: 50 }),
       withTiming(0, { duration: 50 })
     );
+  };
+
+  /* ---------------- SEND OTP ---------------- */
+  const handleResetMpin = async () => {
+    try {
+      const location = await getLatLong();
+      const token = await SecureStore.getItemAsync("userToken");
+
+      if (!location || !token) {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Missing location or session",
+        });
+        return;
+      }
+
+      const res = await sendMpinOtpApi({
+        domain: domainName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        token,
+      });
+
+      if (res.success) {
+        Toast.show({
+          type: "success",
+          text1: "OTP Sent",
+          text2: res.message,
+        });
+      }
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to send OTP",
+        text2: err.message || "Something went wrong",
+      });
+    }
   };
 
   /* ---------------- SET MPIN ---------------- */
@@ -147,75 +188,84 @@ export function SetupMPINModal({
   /* ---------------- UI ---------------- */
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.container, animatedStyle]}>
-          {/* HEADER */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Reset MPIN</Text>
-            <Pressable onPress={onClose}>
-              <X size={22} color={theme.colors.text.primary} />
-            </Pressable>
-          </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+      >
+        <View style={styles.overlay}>
+          <Animated.View style={[styles.container, animatedStyle]}>
+            {/* HEADER */}
+            <View style={styles.header}>
+              <Text style={styles.title}>Reset MPIN</Text>
+              <Pressable onPress={onClose}>
+                <X size={22} color={theme.colors.text.primary} />
+              </Pressable>
+            </View>
 
-          <Text style={styles.subtitle}>
-            Enter the OTP sent to your registered email to reset your MPIN.
-          </Text>
+            <Text style={styles.subtitle}>
+              Enter the OTP sent to your registered email to reset your MPIN.
+            </Text>
 
-          <Animated.View style={shakeStyle}>
-            <Input
-              label="Enter OTP"
-              value={otp}
-              keyboardType="number-pad"
-              maxLength={4}
-              onChangeText={(v: string) =>
-                /^\d*$/.test(v) && setOtp(v)
-              }
-            />
+            <Animated.View style={shakeStyle}>
+              <Input
+                label="Enter OTP"
+                value={otp}
+                keyboardType="number-pad"
+                maxLength={4}
+                onChangeText={(v: string) =>
+                  /^\d*$/.test(v) && setOtp(v)
+                }
+              />
 
-            <Input
-              label="Enter New 4-digit MPIN"
-              value={mpin}
-              keyboardType="number-pad"
-              secureTextEntry
-              maxLength={4}
-              onChangeText={(v: string) =>
-                /^\d*$/.test(v) && setMpin(v)
-              }
-            />
+              <Input
+                label="Enter New 4-digit MPIN"
+                value={mpin}
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={4}
+                onChangeText={(v: string) =>
+                  /^\d*$/.test(v) && setMpin(v)
+                }
+              />
 
-            <Input
-              label="Confirm New 4-digit MPIN"
-              value={confirmMpin}
-              keyboardType="number-pad"
-              secureTextEntry
-              maxLength={4}
-              onChangeText={(v: string) =>
-                /^\d*$/.test(v) && setConfirmMpin(v)
-              }
-            />
+              <Input
+                label="Confirm New 4-digit MPIN"
+                value={confirmMpin}
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={4}
+                onChangeText={(v: string) =>
+                  /^\d*$/.test(v) && setConfirmMpin(v)
+                }
+              />
+            </Animated.View>
+
+            {/* ACTIONS */}
+            <View style={styles.actions}>
+              <Pressable style={styles.backBtn} onPress={onClose}>
+                <Text style={styles.backText}>Back</Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.primaryBtn,
+                  loading && { opacity: 0.6 },
+                ]}
+                onPress={handleSetMpin}
+                disabled={loading}
+              >
+                <Text style={styles.primaryText}>
+                  {loading ? "Setting..." : "Set New MPIN"}
+                </Text>
+              </Pressable>
+            </View>
           </Animated.View>
 
-          {/* ACTIONS */}
-          <View style={styles.actions}>
-            <Pressable style={styles.backBtn} onPress={onClose}>
-              <Text style={styles.backText}>Back</Text>
-            </Pressable>
-
-            <Pressable
-              style={[
-                styles.primaryBtn,
-                loading && { opacity: 0.6 },
-              ]}
-              onPress={handleSetMpin}
-              disabled={loading}
-            >
-              <Text style={styles.primaryText}>
-                {loading ? "Setting..." : "Set New MPIN"}
-              </Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-      </View>
+          {/* TOAST ABOVE MODAL */}
+          <Toast position="bottom" bottomOffset={40} />
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

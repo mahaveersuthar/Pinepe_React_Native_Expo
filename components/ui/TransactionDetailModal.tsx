@@ -125,7 +125,7 @@ export function TransactionDetailsModal({
             </Section>
 
             {/* USER INFO */}
-            <Section title="User Information">
+            {/* <Section title="User Information">
               <Card>
                 <Info label="User Name" value={transaction.user?.name} />
                 <Divider />
@@ -133,7 +133,7 @@ export function TransactionDetailsModal({
                 <Divider />
                 <Info label="Domain" value={transaction.user?.domain} />
               </Card>
-            </Section>
+            </Section> */}
 
             <View style={{ height: 40 }} />
           </ScrollView>

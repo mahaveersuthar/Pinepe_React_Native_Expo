@@ -1,77 +1,131 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Image } from 'react-native';
-import { Search } from 'lucide-react-native';
-import { theme } from '@/theme';
-import { AnimatedCard } from '@/components/animated/AnimatedCard';
-import { AnimatedButton } from '@/components/animated/AnimatedButton';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Image,
+  Linking,
+} from "react-native";
+import { Search } from "lucide-react-native";
+import Constants from "expo-constants";
+import * as SecureStore from "expo-secure-store";
+import Toast from "react-native-toast-message";
 
+import { theme } from "@/theme";
+import { AnimatedCard } from "@/components/animated/AnimatedCard";
+import { AnimatedButton } from "@/components/animated/AnimatedButton";
+import { getLatLong } from "@/utils/location";
+import { getServicesApi } from "../api/service.api";
 
-const mockServices = [
-  {
-    id: '1',
-    name: 'Mobile Recharge',
-    description: 'Instant mobile recharge',
-    price: 10.00,
-    category: 'recharge',
-    image: 'https://images.pexels.com/photos/1092644/pexels-photo-1092644.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: '2',
-    name: 'DTH Recharge',
-    description: 'Recharge your DTH',
-    price: 15.00,
-    category: 'recharge',
-    image: 'https://images.pexels.com/photos/1201996/pexels-photo-1201996.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: '3',
-    name: 'Electricity Bill',
-    description: 'Pay electricity bills',
-    price: 50.00,
-    category: 'bills',
-    image: 'https://images.pexels.com/photos/949587/pexels-photo-949587.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: '4',
-    name: 'Water Bill',
-    description: 'Pay water bills',
-    price: 30.00,
-    category: 'bills',
-    image: 'https://images.pexels.com/photos/416528/pexels-photo-416528.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-];
+type ServiceItem = {
+  id: number;
+  name: string;
+  slug: string;
+  image: string;
+  url: string;
+  status: number;
+  category: string;
+  is_purchased: boolean;
+  amount: number | null;
+  is_locked: boolean;
+};
 
 export default function ServicesScreen() {
-  const [selectedService, setSelectedService] = useState<typeof mockServices[0] | null>(null);
-  const [showMPINModal, setShowMPINModal] = useState(false);
+  const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleBuyService = (service: typeof mockServices[0]) => {
-    setSelectedService(service);
-    setShowMPINModal(true);
-  };
+  const tenantData = Constants.expoConfig?.extra?.tenantData;
+  const domainName = tenantData?.domain || "laxmeepay.com";
 
-  const handleMPINSuccess = async () => {
-    if (!selectedService) return;
-
-    setShowMPINModal(false);
+  /* ===========================
+     FETCH SERVICES
+  ============================ */
+  const handleFetchServices = async () => {
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const location = await getLatLong();
+      if (!location) {
+        Toast.show({
+          type: "error",
+          text1: "Location Required",
+          text2: "Please enable location permission",
+        });
+        return;
+      }
+
+      const token = await SecureStore.getItemAsync("userToken");
+
+      const json = await getServicesApi({
+        domain: domainName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        token: token!,
+        status: "active",
+        perPage: 50,
+      });
+
+      setServices(json.data.items);
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to load services",
+        text2: err.message || "Something went wrong",
+      });
+    } finally {
       setLoading(false);
-      Alert.alert('Success', `${selectedService.name} purchased successfully!`);
-      setSelectedService(null);
-    }, 500);
+    }
   };
 
-  const getCategoryServices = (category: string) => {
-    return mockServices.filter(s => s.category === category);
+  useEffect(() => {
+    handleFetchServices();
+  }, []);
+
+  /* ===========================
+     GROUP + SORT (A → Z)
+  ============================ */
+  const groupedServices = useMemo(() => {
+    const map: Record<string, ServiceItem[]> = {};
+
+    services.forEach(service => {
+      const category = service.category || "Others";
+      if (!map[category]) map[category] = [];
+      map[category].push(service);
+    });
+
+    Object.keys(map).forEach(category => {
+      map[category].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+    });
+
+    return Object.keys(map)
+      .sort((a, b) => a.localeCompare(b))
+      .map(category => ({
+        category,
+        items: map[category],
+      }));
+  }, [services]);
+
+  /* ===========================
+     SERVICE ACTION
+  ============================ */
+  const handleServicePress = (service: ServiceItem) => {
+    if (service.url.startsWith("/")) {
+      console.log("Navigate internal:", service.url);
+    } else {
+      Linking.openURL(service.url);
+    }
   };
 
-  const categories = Array.from(new Set(mockServices.map(s => s.category)));
-
+  /* ===========================
+     UI
+  ============================ */
   return (
     <View style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.title}>Services</Text>
         <Pressable style={styles.searchButton}>
@@ -79,74 +133,87 @@ export default function ServicesScreen() {
         </Pressable>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {categories.map((category) => {
-          const categoryServices = getCategoryServices(category);
-          if (categoryServices.length === 0) return null;
+      {/* CONTENT */}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {groupedServices.map(({ category, items }) => (
+          <View key={category} style={styles.categorySection}>
+            <Text style={styles.categoryTitle}>
+              {category.toUpperCase()}
+            </Text>
 
-          return (
-            <View key={category} style={styles.categorySection}>
-              <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
-              <View style={styles.servicesGrid}>
-                {categoryServices.map((service, index) => (
-                  <AnimatedCard
-                    key={service.id}
-                    style={styles.serviceCard}
-                    delay={index * 50}
-                  >
+            <View style={styles.servicesGrid}>
+              {items.map((service, index) => (
+                <AnimatedCard
+                  key={service.id}
+                  style={styles.serviceCard}
+                  delay={index * 60}
+                >
+                  {/* ICON */}
+                  <View style={styles.iconWrapper}>
                     <Image
                       source={{ uri: service.image }}
                       style={styles.serviceImage}
-                      resizeMode="cover"
+                      resizeMode="contain"
                     />
-                    <View style={styles.serviceInfo}>
-                      <Text style={styles.serviceName} numberOfLines={2}>
-                        {service.name}
+                  </View>
+
+                  {/* INFO */}
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceName} numberOfLines={2}>
+                      {service.name}
+                    </Text>
+
+                    <Text style={styles.serviceCategory}>
+                      {service.category}
+                    </Text>
+
+                    <View style={styles.footerRow}>
+                      <Text style={styles.amountText}>
+                        ₹{service.amount ?? "0"}
                       </Text>
-                      <Text style={styles.serviceDescription} numberOfLines={2}>
-                        {service.description}
-                      </Text>
-                      <View style={styles.serviceFooter}>
-                        <Text style={styles.servicePrice}>₹{service.price.toFixed(2)}</Text>
-                        <AnimatedButton
-                          title="Buy Now"
-                          onPress={() => handleBuyService(service)}
-                          variant="primary"
-                          size="small"
-                          loading={loading && selectedService?.id === service.id}
-                        />
-                      </View>
+
+                      <AnimatedButton
+                        title="Purchase Now"
+                        onPress={() => handleServicePress(service)}
+                        variant="primary"
+                        size="small"
+                        loading={loading}
+                      />
                     </View>
-                  </AnimatedCard>
-                ))}
-              </View>
+                  </View>
+                </AnimatedCard>
+              ))}
             </View>
-          );
-        })}
+          </View>
+        ))}
 
         <View style={{ height: 100 }} />
       </ScrollView>
-
-      
     </View>
   );
 }
 
+/* ===========================
+   STYLES
+=========================== */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.dark,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: theme.spacing[6],
     paddingTop: theme.spacing[12],
     paddingBottom: theme.spacing[4],
   },
   title: {
-    fontSize: theme.typography.fontSizes['3xl'],
+    fontSize: theme.typography.fontSizes["3xl"],
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text.primary,
   },
@@ -155,8 +222,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.background.light,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     ...theme.shadows.sm,
   },
   content: {
@@ -168,45 +235,56 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     fontSize: theme.typography.fontSizes.sm,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text.secondary,
+    fontWeight: "700",
+    color: theme.colors.primary[500],
     marginBottom: theme.spacing[3],
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
   servicesGrid: {
     gap: theme.spacing[4],
   },
   serviceCard: {
-    flexDirection: 'row',
-    padding: 0,
-    overflow: 'hidden',
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: theme.borderRadius.xl,
+    backgroundColor: theme.colors.background.light,
+    paddingVertical: theme.spacing[3],
+    ...theme.shadows.md,
+  },
+  iconWrapper: {
+    width: 80,
+    height: 80,
+    marginLeft: theme.spacing[3],
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.background.dark,
+    justifyContent: "center",
+    alignItems: "center",
   },
   serviceImage: {
-    width: 100,
-    height: 100,
+    width: 55,
+    height: 55,
   },
   serviceInfo: {
     flex: 1,
-    padding: theme.spacing[3],
-    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing[4],
+    gap: theme.spacing[1],
   },
   serviceName: {
     fontSize: theme.typography.fontSizes.md,
-    fontWeight: theme.typography.fontWeights.semibold,
+    fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
   },
-  serviceDescription: {
-    fontSize: theme.typography.fontSizes.sm,
+  serviceCategory: {
+    fontSize: theme.typography.fontSizes.xs,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing[2],
   },
-  serviceFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: theme.spacing[2],
   },
-  servicePrice: {
+  amountText: {
     fontSize: theme.typography.fontSizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.primary[500],

@@ -29,6 +29,7 @@ import { updateProfileApi } from "@/app/api/profile.api";
 interface Props {
   visible: boolean;
   profileData: any;
+  handleImagePicker:()=>void;
   onClose: () => void;
   onSuccess: (user: any) => void;
 }
@@ -38,6 +39,7 @@ export function EditProfileModal({
   profileData,
   onClose,
   onSuccess,
+  handleImagePicker
 }: Props) {
   const translateY = useSharedValue(500);
 
@@ -133,7 +135,7 @@ export function EditProfileModal({
             </View>
 
            
-            <View style={styles.avatarWrapper}>
+            <Pressable onPress={handleImagePicker} style={styles.avatarWrapper}>
               <View style={styles.avatar}>
                 {profileData?.user?.photo ? (
                   <Image
@@ -150,7 +152,7 @@ export function EditProfileModal({
               <View style={styles.cameraIcon}>
                 <Camera size={14} color="#fff" />
               </View>
-            </View>
+            </Pressable>
 
             
             <Input

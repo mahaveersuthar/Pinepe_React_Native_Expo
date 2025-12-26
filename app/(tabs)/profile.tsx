@@ -50,61 +50,16 @@ export default function ProfileScreen() {
 
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [showSetupMPIN, setShowSetupMPIN] = useState(false);
+ 
   const [mpinExists, setMpinExists] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [sendingOtp, setSendingOtp] = useState(false);
-
+ 
+ const [showSetupMPIN, setShowSetupMPIN] = useState(false);
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
 
 
-  const handleResetMpin = async () => {
-  try {
-    setSendingOtp(true);
 
-    const location = await getLatLong();
-    const token = await SecureStore.getItemAsync("userToken");
-
-    if (!location || !token) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Missing location or session",
-      });
-      return;
-    }
-
-    const tenantData = Constants.expoConfig?.extra?.tenantData;
-    const domainName = tenantData?.domain || "laxmeepay.com";
-
-    const res = await sendMpinOtpApi({
-      domain: domainName,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      token,
-    });
-
-    if (res.success) {
-      Toast.show({
-        type: "success",
-        text1: "OTP Sent",
-        text2: res.message,
-      });
-
-      // ✅ OPEN MODAL ONLY AFTER OTP SUCCESS
-      setShowSetupMPIN(true);
-    }
-  } catch (err: any) {
-    Toast.show({
-      type: "error",
-      text1: "Failed to send OTP",
-      text2: err.message || "Something went wrong",
-    });
-  } finally {
-    setSendingOtp(false);
-  }
-};
 
   /* ---------------- FETCH PROFILE ---------------- */
   const fetchProfile = async () => {
@@ -151,7 +106,12 @@ export default function ProfileScreen() {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) return;
 
-      const result = await ImagePicker.launchImageLibraryAsync();
+       const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],   // ✅ new API
+      allowsEditing:true,
+      aspect: [1, 1],
+      quality: 0.9,
+    });
 
       if (result.canceled) return;
       const image = result.assets[0];
@@ -227,7 +187,10 @@ export default function ProfileScreen() {
           subtitle: mpinExists
             ? "Update your security PIN"
             : "Set up your 4-digit security PIN",
-          onPress: handleResetMpin,
+          onPress: ()=>{
+             
+        setShowSetupMPIN(true);
+          },
           showChevron: true,
         },
       ],
@@ -379,6 +342,7 @@ export default function ProfileScreen() {
       <EditProfileModal
         visible={showEditProfile}
         profileData={profileData}
+        handleImagePicker={handleImagePicker}
         onClose={() => setShowEditProfile(false)}
         onSuccess={(updatedUser) =>
           setProfileData((prev: any) => ({

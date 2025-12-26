@@ -27,14 +27,16 @@ import { getTransactionsApi } from "../api/transaction.api";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TransactionDetailsModal } from "@/components/ui/TransactionDetailModal";
 import { TransactionFilterModal } from "@/components/ui/TransactionFilterModal";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
-type FilterType = "all" | "success" | "pending" | "failed";
+
+type FilterType = "All" | "Success" | "Pending" | "Failed";
 
 // Define a constant for card height to optimize rendering
-const ITEM_HEIGHT = 100; 
+const ITEM_HEIGHT = 100;
 
 export default function TransactionsScreen() {
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<FilterType>("All");
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,15 +50,17 @@ export default function TransactionsScreen() {
     toDate?: Date;
     status?: "completed" | "pending" | "failed";
   } | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
+  const tabBarHeight = useBottomTabBarHeight();
+
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  
+
   const userToken = useRef<string | null>(null);
 
   /* ---------------- HELPERS ---------------- */
@@ -113,7 +117,7 @@ export default function TransactionsScreen() {
       };
 
       const STATUS_MAP: any = { all: undefined, success: "completed", pending: "pending", failed: "failed" };
-      const apiStatus = STATUS_MAP[filter];
+      const apiStatus = STATUS_MAP[filter.toLowerCase()];
       if (apiStatus) payload.status = apiStatus;
       if (debouncedSearch.trim()) payload.transaction_id = debouncedSearch.trim();
       if (appliedFilters?.type) payload.transaction_type = appliedFilters.type;
@@ -123,8 +127,19 @@ export default function TransactionsScreen() {
       const res = await getTransactionsApi(payload);
 
       if (res.success) {
+        console.log("==item==", res.data.items);
         const newItems = res.data.items || [];
-        setTransactions(prev => (targetPage === 1 ? newItems : [...prev, ...newItems]));
+        setTransactions(prev => {
+          if (targetPage === 1) return newItems;
+
+          const map = new Map<string, any>();
+
+          [...prev, ...newItems].forEach(txn => {
+            map.set(txn.transaction_id, txn);
+          });
+
+          return Array.from(map.values());
+        });
         setHasMore(newItems.length >= 15);
         setPage(targetPage);
       }
@@ -146,6 +161,12 @@ export default function TransactionsScreen() {
 
   useEffect(() => {
     fetchTransactions(1, false);
+  }, [filter, appliedFilters, debouncedSearch]);
+
+  useEffect(() => {
+    setTransactions([]);
+    setPage(1);
+    setHasMore(true);
   }, [filter, appliedFilters, debouncedSearch]);
 
   const handleRefresh = () => {
@@ -173,17 +194,17 @@ export default function TransactionsScreen() {
         }}
         style={styles.cardContainer}
       >
-        <AnimatedCard style={styles.transactionCard} delay={0}> 
+        <AnimatedCard style={styles.transactionCard} delay={0}>
           <View style={styles.cardRow}>
             <View style={[styles.iconWrapper, {
-              backgroundColor: item.status === 'pending' ? theme.colors.warning[50] 
+              backgroundColor: item.status === 'pending' ? theme.colors.warning[50]
                 : item.status === 'failed' ? theme.colors.error[50]
-                : credit ? theme.colors.success[50] : theme.colors.error[50]
+                  : credit ? theme.colors.success[50] : theme.colors.error[50]
             }]}>
               {item.status === 'pending' ? <Clock size={18} color={theme.colors.warning[500]} />
                 : item.status === 'failed' ? <XCircle size={18} color={theme.colors.error[500]} />
-                : credit ? <ArrowDownLeft size={18} color={theme.colors.success[500]} />
-                : <ArrowUpRight size={18} color={theme.colors.error[500]} />}
+                  : credit ? <ArrowDownLeft size={18} color={theme.colors.success[500]} />
+                    : <ArrowUpRight size={18} color={theme.colors.error[500]} />}
             </View>
 
             <View style={styles.details}>
@@ -191,7 +212,9 @@ export default function TransactionsScreen() {
               <Text style={styles.txnDate}>{formatDate(item.created_at)}</Text>
               <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
                 <Text style={[styles.statusText, { color: statusColor }]}>
-                  {item.status.toUpperCase()}
+                  {item.status === "completed" || item.status === "completd"
+                    ? "SUCCESS"
+                    : item.status.toUpperCase()}
                 </Text>
               </View>
             </View>
@@ -227,7 +250,7 @@ export default function TransactionsScreen() {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={["all", "success", "pending", "failed"]}
+          data={["All", "Success", "Pending", "Failed"]}
           keyExtractor={(item) => item}
           renderItem={({ item }) => (
             <Pressable
@@ -235,7 +258,7 @@ export default function TransactionsScreen() {
               onPress={() => setFilter(item as FilterType)}
             >
               <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
-                {item.toUpperCase()}
+                {item}
               </Text>
             </Pressable>
           )}
@@ -262,7 +285,7 @@ export default function TransactionsScreen() {
           <FlatList
             data={transactions}
             renderItem={renderItem}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item) => `${item.transaction_id}-${item.id}`}
             showsVerticalScrollIndicator={false}
             // --- Performance Props ---
             initialNumToRender={8}     // Load small amount first
@@ -270,10 +293,9 @@ export default function TransactionsScreen() {
             maxToRenderPerBatch={10}   // Don't overwhelm the UI thread
             removeClippedSubviews={true} // Free up memory for off-screen items
             getItemLayout={getItemLayout} // Skip layout measurement (Fast!)
-            
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5} // Start loading next page when half-way down
-            
+
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.primary[500]} />
             }
@@ -286,13 +308,17 @@ export default function TransactionsScreen() {
               ) : null
             }
             ListFooterComponent={() => loadingMore ? <ActivityIndicator style={{ padding: 20 }} /> : <View style={{ height: 80 }} />}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: tabBarHeight + 16 }
+            ]}
+            style={{ marginTop: 16 }}
           />
         )}
       </View>
 
       {/* MODALS */}
-      <TransactionFilterModal visible={showFilterModal} onClose={() => setShowFilterModal(false)} onApply={(f:any) => { setAppliedFilters(f); setIsFilterApplied(true); }} onReset={() => { setAppliedFilters(null); setIsFilterApplied(false); }} />
+      <TransactionFilterModal visible={showFilterModal} onClose={() => setShowFilterModal(false)} onApply={(f: any) => { setAppliedFilters(f); setIsFilterApplied(true); }} onReset={() => { setAppliedFilters(null); setIsFilterApplied(false); }} />
       <TransactionDetailsModal visible={showTxnModal} transaction={selectedTxn} onClose={() => setShowTxnModal(false)} />
     </View>
   );
@@ -309,7 +335,7 @@ const styles = StyleSheet.create({
   filterTextActive: { color: "#fff" },
   searchBox: { flexDirection: "row", alignItems: "center", gap: 10, height: 44, paddingHorizontal: 12, borderRadius: 10, backgroundColor: theme.colors.background.light, marginTop: 10 },
   searchInput: { flex: 1, color: theme.colors.text.primary },
-  listContent: { paddingHorizontal: 16, flexGrow: 1 ,paddingBottom:50},
+  listContent: { paddingHorizontal: 16, flexGrow: 1, paddingBottom: 50, rowGap: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center", minHeight: 300 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: theme.colors.text.primary, marginTop: 16 },
   cardContainer: { height: ITEM_HEIGHT, justifyContent: 'center' }, // Fixed height container
