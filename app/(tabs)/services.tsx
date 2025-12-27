@@ -8,7 +8,7 @@ import {
   Image,
   Linking,
 } from "react-native";
-import { Search } from "lucide-react-native";
+import { Search, Package } from "lucide-react-native";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import Toast from "react-native-toast-message";
@@ -32,6 +32,18 @@ type ServiceItem = {
   amount: number | null;
   is_locked: boolean;
 };
+const EmptyServicesState = () => (
+  <View style={styles.emptyState}>
+    <View style={styles.emptyIconWrapper}>
+      <Package size={40} color={theme.colors.text.tertiary} />
+    </View>
+
+    <Text style={styles.emptyTitle}>No services available</Text>
+    <Text style={styles.emptySubtitle}>
+      Services will appear here once they are enabled
+    </Text>
+  </View>
+);
 
 export default function ServicesScreen() {
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -135,9 +147,6 @@ export default function ServicesScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.title}>Services</Text>
-        <Pressable style={styles.searchButton}>
-          <Search size={20} color={theme.colors.text.primary} />
-        </Pressable>
       </View>
 
       {/* CONTENT */}
@@ -151,6 +160,8 @@ export default function ServicesScreen() {
             <ServiceCardSkeleton />
             <ServiceCardSkeleton />
           </View>
+        ) : services.length === 0 ? (
+          <EmptyServicesState />
         ) : (
           groupedServices.map(({ category, items }) => (
             <View key={category} style={styles.categorySection}>
@@ -174,10 +185,10 @@ export default function ServicesScreen() {
                     >
                       {/* Left side: Service Image */}
                       <View style={styles.iconWrapper}>
-                        <Image 
-                           source={{ uri: service.image }} 
-                           style={styles.serviceImage}
-                           resizeMode="contain"
+                        <Image
+                          source={{ uri: service.image }}
+                          style={styles.serviceImage}
+                          resizeMode="contain"
                         />
                       </View>
 
@@ -291,4 +302,36 @@ const styles = StyleSheet.create({
   pressable: {
     borderRadius: theme.borderRadius.xl,
   },
+  emptyState: {
+  flex: 1,
+  marginTop: 80,
+  alignItems: "center",
+  justifyContent: "center",
+  paddingHorizontal: 24,
+
+},
+
+emptyIconWrapper: {
+  width: 72,
+  height: 72,
+  borderRadius: 36,
+  backgroundColor: theme.colors.background.light,
+  justifyContent: "center",
+  alignItems: "center",
+  marginBottom: 16,
+},
+
+emptyTitle: {
+  fontSize: theme.typography.fontSizes.lg,
+  fontWeight: "700",
+  color: theme.colors.text.primary,
+  marginBottom: 6,
+},
+
+emptySubtitle: {
+  fontSize: theme.typography.fontSizes.sm,
+  color: theme.colors.text.secondary,
+  textAlign: "center",
+},
+
 });

@@ -35,6 +35,7 @@ import { getProfileApi, uploadProfilePhotoApi } from "../api/profile.api";
 import { EditProfileModal } from "@/components/ui/EditProfileModal";
 import { SetupMPINModal } from "@/components/ui/MPINModal";
 import { sendMpinOtpApi } from "../api/mpin.api";
+import { ActivityIndicator } from "react-native";
 
 interface MenuItem {
   icon: any;
@@ -50,13 +51,15 @@ export default function ProfileScreen() {
 
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
- 
+
   const [mpinExists, setMpinExists] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
- 
- const [showSetupMPIN, setShowSetupMPIN] = useState(false);
+
+  const [showSetupMPIN, setShowSetupMPIN] = useState(false);
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
+  const [mpinLoading, setMpinLoading] = useState(false);
+
 
 
 
@@ -106,12 +109,12 @@ export default function ProfileScreen() {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) return;
 
-       const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],   // ✅ new API
-      allowsEditing:true,
-      aspect: [1, 1],
-      quality: 0.9,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],   // ✅ new API
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
 
       if (result.canceled) return;
       const image = result.assets[0];
@@ -169,6 +172,52 @@ export default function ProfileScreen() {
     ]);
   };
 
+  /* ---------------- SEND OTP ---------------- */
+  const handleResetMpin = async () => {
+    try {
+      setMpinLoading(true);
+      const location = await getLatLong();
+      const token = await SecureStore.getItemAsync("userToken");
+
+      if (!location || !token) {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Missing location or session",
+        });
+        return;
+      }
+
+      const res = await sendMpinOtpApi({
+        domain: domainName,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        token,
+      });
+
+      if (res.success) {
+        Toast.show({
+          type: "success",
+          text1: "OTP Sent",
+          text2: res.message,
+        });
+        setTimeout(()=>{
+          setShowSetupMPIN(true)
+        },500)
+      }
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to send OTP",
+        text2: err.message || "Something went wrong",
+      });
+    }
+    finally {
+      setMpinLoading(false);
+    }
+  };
+
+
   /* ---------------- MENU SECTIONS (UNCHANGED) ---------------- */
   const menuSections: { title: string; items: MenuItem[] }[] = [
     {
@@ -187,9 +236,9 @@ export default function ProfileScreen() {
           subtitle: mpinExists
             ? "Update your security PIN"
             : "Set up your 4-digit security PIN",
-          onPress: ()=>{
-             
-        setShowSetupMPIN(true);
+          onPress: () => {
+
+            handleResetMpin()
           },
           showChevron: true,
         },
@@ -293,7 +342,11 @@ export default function ProfileScreen() {
                     onPress={item.onPress}
                   >
                     <View style={styles.menuIconContainer}>
-                      <Icon size={20} color={theme.colors.primary[500]} />
+                      {mpinLoading && item.title.includes("MPIN") ? (
+                        <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+                      ) : (
+                        <Icon size={20} color={theme.colors.primary[500]} />
+                      )}
                     </View>
 
                     <View style={styles.menuContent}>

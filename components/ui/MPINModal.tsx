@@ -23,7 +23,7 @@ import Constants from "expo-constants";
 
 import { theme } from "@/theme";
 import { getLatLong } from "@/utils/location";
-import { sendMpinOtpApi, setMpinApi } from "@/app/api/mpin.api";
+import { setMpinApi } from "@/app/api/mpin.api";
 
 interface Props {
   visible: boolean;
@@ -31,11 +31,7 @@ interface Props {
   onSuccess: () => void;
 }
 
-export function SetupMPINModal({
-  visible,
-  onClose,
-  onSuccess,
-}: Props) {
+export function SetupMPINModal({ visible, onClose, onSuccess }: Props) {
   const translateY = useSharedValue(500);
   const shake = useSharedValue(0);
 
@@ -47,7 +43,18 @@ export function SetupMPINModal({
   const [confirmMpin, setConfirmMpin] = useState("");
   const [loading, setLoading] = useState(false);
 
-  /* ---------------- ANIMATION ---------------- */
+  /* ===========================
+     FORM VALIDATION
+  ============================ */
+  const isFormValid =
+    otp.length === 4 &&
+    mpin.length === 4 &&
+    confirmMpin.length === 4 &&
+    mpin === confirmMpin;
+
+  /* ===========================
+     ANIMATION
+  ============================ */
   useEffect(() => {
     translateY.value = visible
       ? withSpring(0, { damping: 20 })
@@ -57,7 +64,6 @@ export function SetupMPINModal({
       setOtp("");
       setMpin("");
       setConfirmMpin("");
-      handleResetMpin();
     }
   }, [visible]);
 
@@ -77,73 +83,12 @@ export function SetupMPINModal({
     );
   };
 
-  /* ---------------- SEND OTP ---------------- */
-  const handleResetMpin = async () => {
-    try {
-      const location = await getLatLong();
-      const token = await SecureStore.getItemAsync("userToken");
-
-      if (!location || !token) {
-        Toast.show({
-          type: "error",
-          text1: "Error",
-          text2: "Missing location or session",
-        });
-        return;
-      }
-
-      const res = await sendMpinOtpApi({
-        domain: domainName,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        token,
-      });
-
-      if (res.success) {
-        Toast.show({
-          type: "success",
-          text1: "OTP Sent",
-          text2: res.message,
-        });
-      }
-    } catch (err: any) {
-      Toast.show({
-        type: "error",
-        text1: "Failed to send OTP",
-        text2: err.message || "Something went wrong",
-      });
-    }
-  };
-
-  /* ---------------- SET MPIN ---------------- */
+  /* ===========================
+     SET MPIN
+  ============================ */
   const handleSetMpin = async () => {
-    if (otp.length !== 4) {
+    if (!isFormValid) {
       triggerShake();
-      Toast.show({
-        type: "error",
-        text1: "Invalid OTP",
-        text2: "Please enter 4-digit OTP",
-      });
-      return;
-    }
-
-    if (mpin.length !== 4 || confirmMpin.length !== 4) {
-      triggerShake();
-      Toast.show({
-        type: "error",
-        text1: "Invalid MPIN",
-        text2: "MPIN must be 4 digits",
-      });
-      return;
-    }
-
-    if (mpin !== confirmMpin) {
-      triggerShake();
-      Toast.show({
-        type: "error",
-        text1: "MPIN Mismatch",
-        text2: "MPIN and Confirm MPIN must match",
-      });
       return;
     }
 
@@ -152,7 +97,6 @@ export function SetupMPINModal({
 
       const location = await getLatLong();
       const token = await SecureStore.getItemAsync("userToken");
-
       if (!location || !token) return;
 
       const res = await setMpinApi({
@@ -185,13 +129,14 @@ export function SetupMPINModal({
     }
   };
 
-  /* ---------------- UI ---------------- */
+  /* ===========================
+     UI
+  ============================ */
   return (
     <Modal visible={visible} transparent animationType="fade">
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <View style={styles.overlay}>
           <Animated.View style={[styles.container, animatedStyle]}>
@@ -239,6 +184,12 @@ export function SetupMPINModal({
                   /^\d*$/.test(v) && setConfirmMpin(v)
                 }
               />
+
+              {confirmMpin.length === 4 && mpin !== confirmMpin && (
+                <Text style={styles.errorText}>
+                  MPIN does not match
+                </Text>
+              )}
             </Animated.View>
 
             {/* ACTIONS */}
@@ -250,10 +201,10 @@ export function SetupMPINModal({
               <Pressable
                 style={[
                   styles.primaryBtn,
-                  loading && { opacity: 0.6 },
+                  (!isFormValid || loading) && { opacity: 0.5 },
                 ]}
                 onPress={handleSetMpin}
-                disabled={loading}
+                disabled={!isFormValid || loading}
               >
                 <Text style={styles.primaryText}>
                   {loading ? "Setting..." : "Set New MPIN"}
@@ -262,7 +213,6 @@ export function SetupMPINModal({
             </View>
           </Animated.View>
 
-          {/* TOAST ABOVE MODAL */}
           <Toast position="bottom" bottomOffset={40} />
         </View>
       </KeyboardAvoidingView>
@@ -270,7 +220,9 @@ export function SetupMPINModal({
   );
 }
 
-/* ---------------- INPUT ---------------- */
+/* ===========================
+   INPUT COMPONENT
+=========================== */
 const Input = ({ label, ...props }: any) => {
   const [focused, setFocused] = useState(false);
 
@@ -290,7 +242,9 @@ const Input = ({ label, ...props }: any) => {
   );
 };
 
-/* ---------------- STYLES ---------------- */
+/* ===========================
+   STYLES
+=========================== */
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -329,6 +283,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: theme.colors.border.medium,
+  },
+  errorText: {
+    fontSize: 12,
+    color: theme.colors.error[500],
+    marginTop: 4,
   },
   actions: {
     flexDirection: "row",

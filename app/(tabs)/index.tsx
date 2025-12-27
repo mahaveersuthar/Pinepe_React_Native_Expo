@@ -14,7 +14,7 @@ import { getTransactionsApi } from '../api/transaction.api';
 import Constants from "expo-constants";
 import Toast from 'react-native-toast-message';
 import { createShimmerPlaceholder } from "react-native-shimmer-placeholder";
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { getServicesApi } from '../api/service.api';
 import { getProfileApi } from '../api/profile.api';
 import { getWalletBalanceApi } from '../api/balance.api';
@@ -32,6 +32,21 @@ const TransactionSkeleton = () => (
       </View>
       <ShimmerPlaceholder style={styles.shimmerAmount} />
     </View>
+  </View>
+);
+const EmptyState = ({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) => (
+  <View style={styles.emptyState}>
+    {icon}
+    <Text style={styles.emptyTitle}>{title}</Text>
+    {subtitle ? <Text style={styles.emptySubtitle}>{subtitle}</Text> : null}
   </View>
 );
 
@@ -80,7 +95,7 @@ export default function HomeScreen() {
         longitude: location.longitude,
         token,
         page: pageNumber,
-        perPage: 10,
+        perPage: 5,
       });
 
       if (res.success) {
@@ -110,7 +125,7 @@ export default function HomeScreen() {
         longitude: location.longitude,
         token,
         status: "active",
-        perPage: 8,
+        perPage: 5,
       });
 
       if (res.success) {
@@ -197,7 +212,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <LinearGradient
         colors={[theme.colors.primary[500], theme.colors.primary[700]]}
         style={styles.header}
@@ -205,15 +220,13 @@ export default function HomeScreen() {
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
-            {profileLoading ? (
-              <ShimmerPlaceholder
-                style={styles.userNameShimmer}
-              />
-            ) : (
-              <Text style={styles.userName}>
-                {profileData?.user?.name}
-              </Text>
-            )}
+            <Link href="/(tabs)/profile" asChild>
+              <Pressable hitSlop={10}>
+                <Text style={styles.userName}>
+                  {profileData?.user?.name}
+                </Text>
+              </Pressable>
+            </Link>
           </View>
           <View style={styles.avatar}>
             {profileData?.user?.photo ? (
@@ -228,34 +241,34 @@ export default function HomeScreen() {
         </View>
 
         <AnimatedCard style={styles.balanceCard}>
-  {/* HEADER */}
-  <View style={styles.balanceHeader}>
-    <View style={styles.balanceIconContainer}>
-      <Wallet size={22} color={theme.colors.primary[500]} />
-    </View>
+          {/* HEADER */}
+          <View style={styles.balanceHeader}>
+            <View style={styles.balanceIconContainer}>
+              <Wallet size={22} color={theme.colors.primary[500]} />
+            </View>
 
-    <View>
-      <Text style={styles.balanceLabel}>Available Balance</Text>
-      <Text style={styles.balanceSubLabel}>Wallet</Text>
-    </View>
-  </View>
+            <View>
+              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Text style={styles.balanceSubLabel}>Wallet</Text>
+            </View>
+          </View>
 
-  {/* BALANCE */}
-  {balanceLoading ? (
-    <ShimmerPlaceholder style={styles.balanceShimmer} />
-  ) : (
-    <Text style={styles.balanceAmount}>
-      ₹{Number(balance ?? 0).toFixed(2)}
-    </Text>
-  )}
+          {/* BALANCE */}
+          {balanceLoading ? (
+            <ShimmerPlaceholder style={styles.balanceShimmer} />
+          ) : (
+            <Text style={styles.balanceAmount}>
+              ₹{Number(balance ?? 0).toFixed(2)}
+            </Text>
+          )}
 
-  {/* FOOTER INFO */}
-  <View style={styles.balanceFooter}>
-    <View style={styles.balancePill}>
-      <Text style={styles.balancePillText}>Instantly Usable</Text>
-    </View>
-  </View>
-</AnimatedCard>
+          {/* FOOTER INFO */}
+          <View style={styles.balanceFooter}>
+            <View style={styles.balancePill}>
+              <Text style={styles.balancePillText}>Instantly Usable</Text>
+            </View>
+          </View>
+        </AnimatedCard>
       </LinearGradient>
 
       <View style={styles.content}>
@@ -265,39 +278,45 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.servicesGrid}>
-          {servicesLoading
-            ? [...Array(10)].map((_, i) => (
+          {servicesLoading ? (
+            [...Array(5)].map((_, i) => (
               <AnimatedCard key={i} style={styles.serviceCard}>
                 <ShimmerPlaceholder style={styles.shimmerIcon} />
                 <ShimmerPlaceholder style={styles.shimmerText} />
                 <ShimmerPlaceholder style={styles.shimmerCategory} />
               </AnimatedCard>
             ))
-            : services.map((service, index) => (
-              <AnimatedCard
-                key={service.id}
-                style={styles.serviceCard}
-                delay={index * 100}
-              >
-                <View style={styles.serviceIconContainer}>
-                  <Image
-                    source={{ uri: service.image }}
-                    style={{ width: 24, height: 24 }}
-                    resizeMode="contain"
-                  />
-                </View>
+          ) : services.length === 0 ? (
+            <EmptyState
+              icon={<Zap size={36} color={theme.colors.text.tertiary} />}
+              title="No services available"
+              subtitle="Please check back later"
+            />
+          ) : services.map((service, index) => (
+            <AnimatedCard
+              key={service.id}
+              style={styles.serviceCard}
+              delay={index * 100}
+            >
+              <View style={[styles.serviceIconContainer, { alignSelf: 'center' }]}>
+                <Image
+                  source={{ uri: service.image }}
+                  style={{ width: 24, height: 24 }}
+                  resizeMode="contain"
+                />
+              </View>
 
-                <Text style={styles.serviceName} numberOfLines={1}>
-                  {service.name}
-                </Text>
+              <Text style={styles.serviceName} numberOfLines={1}>
+                {service.name}
+              </Text>
 
-                {/* CATEGORY */}
-                <Text style={styles.serviceCategory} numberOfLines={1}>
-                  {service.category}
-                </Text>
-              </AnimatedCard>
+              {/* CATEGORY */}
+              <Text style={styles.serviceCategory} numberOfLines={1}>
+                {service.category}
+              </Text>
+            </AnimatedCard>
 
-            ))}
+          ))}
         </View>
 
         <View style={styles.sectionHeader}>
@@ -312,6 +331,12 @@ export default function HomeScreen() {
             <TransactionSkeleton />
             <TransactionSkeleton />
           </>
+        ) : transactions.length === 0 ? (
+          <EmptyState
+            icon={<Clock size={36} color={theme.colors.text.tertiary} />}
+            title="No transactions yet"
+            subtitle="Your recent transactions will appear here"
+          />
         ) : (
           transactions.map((item, index) => {
             const credit = item.type === 'credit';
@@ -434,36 +459,55 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginTop: 4,
   },
-balanceShimmer: {
-  width: 160,
-  height: 36,
-  borderRadius: 8,
-  marginVertical: 12,
-},
-balanceSubLabel: {
-  fontSize: theme.typography.fontSizes.xs,
-  color: theme.colors.text.secondary,
-  marginTop: 2,
-},
+  balanceShimmer: {
+    width: 160,
+    height: 36,
+    borderRadius: 8,
+    marginVertical: 12,
+  },
+  balanceSubLabel: {
+    fontSize: theme.typography.fontSizes.xs,
+    color: theme.colors.text.secondary,
+    marginTop: 2,
+  },
 
-balanceFooter: {
-  marginTop: theme.spacing[4],
-  flexDirection: "row",
-  justifyContent: "flex-start",
-},
+  balanceFooter: {
+    marginTop: theme.spacing[4],
+    flexDirection: "row",
+    justifyContent: "flex-start",
+  },
 
-balancePill: {
-  backgroundColor: theme.colors.success[50],
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-  borderRadius: 20,
-},
+  balancePill: {
+    backgroundColor: theme.colors.success[50],
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
 
-balancePillText: {
-  fontSize: theme.typography.fontSizes.xs,
-  fontWeight: "600",
-  color: theme.colors.success[500],
-},
+  balancePillText: {
+    fontSize: theme.typography.fontSizes.xs,
+    fontWeight: "600",
+    color: theme.colors.success[500],
+  },
+  emptyState: {
+    width: "100%",
+    paddingVertical: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  emptyTitle: {
+    marginTop: 12,
+    fontSize: theme.typography.fontSizes.md,
+    fontWeight: "600",
+    color: theme.colors.text.secondary,
+  },
+
+  emptySubtitle: {
+    marginTop: 4,
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.text.tertiary,
+  },
 
 
 });
