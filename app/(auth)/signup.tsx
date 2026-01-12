@@ -50,90 +50,158 @@ export default function SignupScreen() {
   const tenantData = Constants.expoConfig?.extra?.tenantData;
   const domainName = tenantData?.domain || "laxmeepay.com";
 
+  const addIndiaCountryCode = (phone: string): string => {
+    if (!phone) return "";
+
+    // Remove spaces and non-numeric chars
+    const cleaned = phone.replace(/\D/g, "");
+
+    // If already has country code
+    if (cleaned.startsWith("91") && cleaned.length === 12) {
+      return `+${cleaned}`;
+    }
+
+    // If normal 10-digit Indian number
+    if (cleaned.length === 10) {
+      return `+91${cleaned}`;
+    }
+
+    // Fallback (return as-is with +)
+    return phone.startsWith("+") ? phone : `+${cleaned}`;
+  };
+
+
 
   const handleSignup = async () => {
-    if (!role || !fullName || !email || !phone || !password || !passwordConfirmation) {
+  if (!role || !fullName || !email || !phone || !password || !passwordConfirmation) {
+    Toast.show({
+      type: "error",
+      text1: "Required Fields",
+      text2: "Please fill all details to continue",
+    });
+    return;
+  }
+
+  if (password !== passwordConfirmation) {
+    Toast.show({
+      type: "error",
+      text1: "Password Mismatch",
+      text2: "Confirm password does not match",
+    });
+    return;
+  }
+
+  if (phone.length < 10) {
+    Toast.show({
+      type: "error",
+      text1: "Invalid Phone",
+      text2: "Please enter a valid 10-digit number",
+    });
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // 📍 Get location
+    const location = await getLatLong();
+
+    // ❌ Block signup if location missing
+    if (!location) {
       Toast.show({
         type: "error",
-        text1: "Required Fields",
-        text2: "Please fill all details to continue",
+        text1: "Location Required",
+        text2: "Please enable location permission to continue",
       });
+      setLoading(false); // Don't forget this!
       return;
     }
 
-    if (password !== passwordConfirmation) {
-      Toast.show({
-        type: "error",
-        text1: "Password Mismatch",
-        text2: "Confirm password does not match",
-      });
-      return;
-    }
+    console.log("==yaha to aaya h ==");
 
-    if (phone.length < 10) {
-      Toast.show({
-        type: "error",
-        text1: "Invalid Phone",
-        text2: "Please enter a valid 10-digit number",
-      });
-      return;
-    }
+    const formattedPhone = addIndiaCountryCode(phone);
 
-    setLoading(true);
+    const payload = {
+      name: fullName,
+      email: email,
+      phone: formattedPhone,
+      role: role,
+      password: password,
+      password_confirmation: passwordConfirmation,
+    };
 
-    try {
-      // 📍 Get location
-      const location = await getLatLong();
+    console.log("📤 SIGNUP PAYLOAD:", JSON.stringify(payload, null, 2));
 
-      // ❌ Block signup if location missing
-      if (!location) {
-        Toast.show({
-          type: "error",
-          text1: "Location Required",
-          text2: "Please enable location permission to continue",
-        });
-        return;
+    const meta = {
+      domain: domainName,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+
+    console.log("📍 SIGNUP META:", JSON.stringify(meta, null, 2));
+
+    const json = await registerApi(
+      {
+        name: fullName,
+        email: email,
+        phone: formattedPhone,
+        role: role,
+        password: password,
+        password_confirmation: passwordConfirmation,
+      },
+      {
+        domain: domainName,
+        latitude: location.latitude,
+        longitude: location.longitude,
       }
+    );
 
-      const json = await registerApi(
-        {
-          name: fullName,
-          email,
-          phone,
-          role,
-          password,
-          password_confirmation: passwordConfirmation,
-        },
-        {
-          domain: domainName,
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }
-      );
+    // ✅ This only runs if registerApi succeeds
+    console.log("✅ SIGNUP SUCCESS:", JSON.stringify(json, null, 2));
 
-      Toast.show({
-        type: "success",
-        text1: "Account Created",
-        text2: "Please verify your email to continue",
-      });
+    Toast.show({
+      type: "success",
+      text1: "Account Created",
+      text2: "Please verify your email to continue",
+    });
 
-      router.replace({
-        pathname: "/(auth)/otp",
-        params: {
-          otp_sent_to: email,
-          from: "signup",
-        },
-      });
-    } catch (err: any) {
-      Toast.show({
-        type: "error",
-        text1: "Signup Failed",
-        text2: err.message || "Check your details and try again",
-      });
-    } finally {
-      setLoading(false);
+    router.replace({
+      pathname: "/(auth)/otp",
+      params: {
+        otp_sent_to: email,
+        from: "signup",
+      },
+    });
+
+  } catch (err: any) {
+    console.log("❌ SIGNUP ERROR - Full error object:", err);
+    console.log("❌ Error response:", err?.response);
+    console.log("❌ Error response data:", JSON.stringify(err?.response?.data, null, 2));
+
+    const errors = err?.response?.data?.errors;
+    let errorMessage = "Something went wrong. Please try again.";
+
+    if (errors) {
+      // Take first validation error message
+      const firstKey = Object.keys(errors)[0];
+      errorMessage = errors[firstKey][0];
+      
+      console.log("❌ Validation errors:", JSON.stringify(errors, null, 2));
+      console.log("❌ Showing error:", errorMessage);
+    } else if (err?.response?.data?.message) {
+      errorMessage = err.response.data.message;
     }
-  };
+
+    Toast.show({
+      type: "error",
+      text1: "Signup Failed",
+      text2: errorMessage,
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
     <View style={styles.mainWrapper}>
       <StatusBar barStyle="dark-content" />
