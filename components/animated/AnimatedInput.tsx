@@ -47,7 +47,7 @@ export function AnimatedInput({ label, error, style, ...props }: AnimatedInputPr
   return (
     <View style={styles.container}>
       {label && (
-        <Animated.View style={[styles.labelContainer, animatedLabelStyle]}>
+        <Animated.View  pointerEvents="none" style={[styles.labelContainer, animatedLabelStyle]}>
           <Text style={[styles.label, (isFocused || props.value) && styles.labelFocused]}>
             {label}
           </Text>

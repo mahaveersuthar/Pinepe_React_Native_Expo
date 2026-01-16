@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, TouchableOpacity, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Wallet, ArrowUpRight, ArrowDownLeft, Zap,
@@ -18,6 +18,8 @@ import { Link, router } from 'expo-router';
 import { getServicesApi } from '../api/service.api';
 import { getProfileApi } from '../api/profile.api';
 import { getWalletBalanceApi } from '../api/balance.api';
+import { ServiceItem } from './services';
+import { VALID_ROUTES } from '@/utils/routes';
 
 const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient);
 
@@ -108,6 +110,30 @@ export default function HomeScreen() {
     }
   };
 
+  const handleServicePress = (service: ServiceItem) => {
+    const url = service.url?.trim();
+
+    // External URL
+    if (url && url.startsWith("http")) {
+      Linking.openURL(url);
+      return;
+    }
+
+    if (url && url.startsWith("/")) {
+      if (VALID_ROUTES.includes(url)) {
+        router.push(url as any);
+      } else {
+        router.push("/CommingSoon");
+      }
+      return;
+    }
+
+    // Fallback
+    router.push("/CommingSoon");
+
+
+  };
+
   const fetchServices = async () => {
     try {
       setServicesLoading(true);
@@ -127,6 +153,8 @@ export default function HomeScreen() {
         status: "active",
         perPage: 5,
       });
+
+      console.log("==services==", res)
 
       if (res.success) {
         setServices(res.data.items || []);
@@ -220,15 +248,11 @@ export default function HomeScreen() {
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Link href="/(tabs)/profile" asChild>
-              <Pressable hitSlop={10}>
                 <Text style={styles.userName}>
                   {profileData?.user?.name}
-                </Text>
-              </Pressable>
-            </Link>
+                </Text>  
           </View>
-          <View style={styles.avatar}>
+          <TouchableOpacity style={[styles.avatar,]} onPress={()=>router.push("/(tabs)/profile")}>
             {profileData?.user?.photo ? (
               <Image
                 source={{ uri: profileData.user.photo }}
@@ -237,7 +261,7 @@ export default function HomeScreen() {
             ) : (
               <User size={32} color="#fff" />
             )}
-          </View>
+          </TouchableOpacity>
         </View>
 
         <AnimatedCard style={styles.balanceCard}>
@@ -264,7 +288,7 @@ export default function HomeScreen() {
                 router.push({
                   pathname: "/send-payout/RequestPayout",
                   params: {
-                    heading:"Move to Bank"
+                    heading: "Move to Bank"
                   }
                 });
               }}
@@ -311,28 +335,38 @@ export default function HomeScreen() {
               subtitle="Please check back later"
             />
           ) : services.map((service, index) => (
-            <AnimatedCard
+
+            <TouchableOpacity
               key={service.id}
-              style={styles.serviceCard}
-              delay={index * 100}
+              onPress={() => handleServicePress(service)}
+              style={{width:"47%",padding:4}}
             >
-              <View style={[styles.serviceIconContainer, { alignSelf: 'center' }]}>
-                <Image
-                  source={{ uri: service.image }}
-                  style={{ width: 24, height: 24 }}
-                  resizeMode="contain"
-                />
-              </View>
 
-              <Text style={styles.serviceName} numberOfLines={1}>
-                {service.name}
-              </Text>
+              <AnimatedCard
+                key={service.id}
+                delay={index * 100}
+              >
+                <View style={[styles.serviceIconContainer,{}]}>
+                  <Image
+                    source={{ uri: service.image }}
+                    style={{ width: 24, height: 24 }}
+                    resizeMode="contain"
+                  />
+                </View>
 
-              {/* CATEGORY */}
-              <Text style={styles.serviceCategory} numberOfLines={1}>
-                {service.category}
-              </Text>
-            </AnimatedCard>
+                <Text style={styles.serviceName} numberOfLines={1}>
+                  {service.name}
+                </Text>
+
+                {/* CATEGORY */}
+                <Text style={styles.serviceCategory} numberOfLines={1}>
+                  {service.category}
+                </Text>
+              </AnimatedCard>
+
+            </TouchableOpacity>
+
+
 
           ))}
         </View>
@@ -538,7 +572,8 @@ const styles = StyleSheet.create({
   balancePillText: {
     fontSize: 12,
     color: theme.colors.primary[600] || '#666',
-  }
+  },
+   
 
 
 });

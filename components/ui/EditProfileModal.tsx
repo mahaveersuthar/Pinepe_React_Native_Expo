@@ -176,6 +176,7 @@ export function EditProfileModal({
               onChangeText={(v: string) =>
                 setForm({ ...form, phone: v })
               }
+              editable={false}
             />
 
             <Input
@@ -232,22 +233,42 @@ export function EditProfileModal({
 }
 
 
-const Input = ({ label, style, ...props }: any) => {
+const Input = ({ label, style, editable = true, ...props }: any) => {
   const [focused, setFocused] = useState(false);
 
+  // Determine if we should apply "disabled" styles
+  const isDisabled = editable === false;
+
   return (
-    <View style={{ marginBottom: 12 }}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={{ marginBottom: 16 }}>
+      <Text style={{ 
+        fontSize: 14, 
+        fontWeight: '500', 
+        marginBottom: 6, 
+        color: isDisabled ? '#9CA3AF' : '#374151' // Dim label if disabled
+      }}>
+        {label}
+      </Text>
+      
       <TextInput
         {...props}
-        style={[
-          styles.input,
-          focused && styles.inputFocused,
-          style,
-        ]}
+        editable={editable}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholderTextColor={theme.colors.text.tertiary}
+        style={[
+          styles.input, // Base style
+          focused && styles.inputFocused, // Focus style
+          
+          // APPLY DISABLED STATE HERE
+          isDisabled && {
+            backgroundColor: "#D1D5DB", 
+            borderColor: "#9CA3AF",
+            color: "#6B7280", // Optional: dim the text color too
+          },
+
+          style, // Custom style overrides
+        ]}
       />
     </View>
   );

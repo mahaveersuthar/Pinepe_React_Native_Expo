@@ -19,8 +19,9 @@ import { AnimatedCard } from "@/components/animated/AnimatedCard";
 import { getLatLong } from "@/utils/location";
 import { getServicesApi } from "../api/service.api";
 import { ServiceCardSkeleton } from "@/components/shimmer/ServiceCardSkeleton";
+import { VALID_ROUTES } from "@/utils/routes";
 
-type ServiceItem = {
+export type ServiceItem = {
   id: number;
   name: string;
   slug: string;
@@ -72,7 +73,7 @@ export default function ServicesScreen() {
       }
 
       const token = await SecureStore.getItemAsync("userToken");
-      console.log("==token==",token)
+      console.log("==token==", token)
 
       const json = await getServicesApi({
         domain: domainName,
@@ -82,9 +83,9 @@ export default function ServicesScreen() {
         status: "active",
         perPage: 50,
       });
-      console.log("==service==",json)
+      console.log("==service==", json)
       setServices(json.data.items || []);
-      
+
     } catch (err: any) {
       Toast.show({
         type: "error",
@@ -128,22 +129,28 @@ export default function ServicesScreen() {
       CARD CLICK HANDLER
   ============================ */
   const handleServicePress = (service: ServiceItem) => {
-  const url = service.url?.trim();
+    const url = service.url?.trim();
 
-  // External URL
-  if (url && url.startsWith("http")) {
-    Linking.openURL(url);
-    return;
-  }
+    // External URL
+    if (url && url.startsWith("http")) {
+      Linking.openURL(url);
+      return;
+    }
 
-  // Internal app route (/aeps, /dmt, etc.)
-  if (url && url.startsWith("/")) {
-    router.push(url as any);
-    return;
-  }
+    if (url && url.startsWith("/")) {
+      if (VALID_ROUTES.includes(url)) {
+        router.push(url as any);
+      } else {
+        router.push("/CommingSoon");
+      }
+      return;
+    }
 
-  
-};
+    // Fallback
+    router.push("/CommingSoon");
+
+
+  };
 
 
   /* ===========================
