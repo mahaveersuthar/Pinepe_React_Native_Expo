@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { router, Tabs } from 'expo-router';
+import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Alert } from 'react-native';
 import { Home, User, Receipt, Grid, ShieldAlert, RefreshCcw } from 'lucide-react-native';
 import { theme } from '@/theme';
 import { useEffect, useState } from 'react';
@@ -8,6 +8,7 @@ import Constants from "expo-constants";
 import { getLatLong } from '@/utils/location';
 import { getKycStatusApi } from '../api/kyc.api';
 import * as Linking from 'expo-linking';
+import { useAuth } from '@/context/AuthContext';
 
 export default function TabLayout() {
   const [kycLoading, setKycLoading] = useState(true);
@@ -15,6 +16,23 @@ export default function TabLayout() {
   const handleOpenKYC = () => {
     Linking.openURL('https://app.pinepe.in/login');
   };
+  const { signOut, hasMPIN } = useAuth();
+
+   const handleLogout = () => {
+      Alert.alert("Logout", "Are you sure you want to logout?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            await SecureStore.deleteItemAsync("userToken");
+            await SecureStore.deleteItemAsync("userData");
+            await signOut();
+            router.replace("/(auth)/login");
+          },
+        },
+      ]);
+    };
 
   const checkKycStatus = async () => {
     try {
@@ -61,30 +79,67 @@ export default function TabLayout() {
     );
   }
 
-  if (!isKycDone) {
-    return (
-      <View style={styles.kycContainer}>
-        <View style={styles.kycCard}>
-          <View style={styles.iconCircle}>
-            <ShieldAlert size={40} color={theme.colors.primary[500]} />
-          </View>
-          <Text style={styles.kycTitle}>KYC Verification Required</Text>
-          <Text style={styles.kycSubtitle}>
-            To access your dashboard, transactions, and services, please complete your identity verification.
-          </Text>
+ if (!isKycDone) {
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background.main, justifyContent: 'center', padding: 20 }}>
+      <View style={{ 
+        backgroundColor: '#fff', 
+        borderRadius: 20, 
+        padding: 24, 
+        alignItems: 'center', 
+        shadowColor: '#000', 
+        shadowOffset: { width: 0, height: 10 }, 
+        shadowOpacity: 0.1, 
+        shadowRadius: 20, 
+        elevation: 5 
+      }}>
+        {/* Icon */}
+        <View style={{ 
+          width: 80, height: 80, borderRadius: 40, 
+          backgroundColor: `${theme.colors.primary[500]}15`, 
+          justifyContent: 'center', alignItems: 'center', marginBottom: 16 
+        }}>
+          <ShieldAlert size={40} color={theme.colors.primary[500]} />
+        </View>
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleOpenKYC}>
-            <Text style={styles.buttonText}>Complete KYC Now</Text>
-          </TouchableOpacity>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' }}>
+          KYC Verification Required
+        </Text>
+        
+        <Text style={{ fontSize: 14, color: '#666', textAlign: 'center', marginTop: 8, marginBottom: 24, lineHeight: 20 }}>
+          To access your services, please login to PinePe and complete your identity verification.
+        </Text>
+        
+        {/* Main Action: Link to PinePe */}
+        <TouchableOpacity 
+          style={{ backgroundColor: theme.colors.primary[500], width: '100%', padding: 16, borderRadius: 12, alignItems: 'center' }} 
+          onPress={() => Linking.openURL('https://app.pinepe.in/login')}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Login to PinePe</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryButton} onPress={checkKycStatus}>
-            <RefreshCcw size={16} color={theme.colors.text.secondary} style={{ marginRight: 8 }} />
-            <Text style={styles.secondaryButtonText}>I've already done it, check status</Text>
+        {/* Secondary Action: Refresh Status */}
+        <TouchableOpacity 
+          style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, padding: 8 }} 
+          onPress={checkKycStatus}
+        >
+          <RefreshCcw size={14} color="#666" style={{ marginRight: 6 }} />
+          <Text style={{ color: '#666', fontSize: 14 }}>I've finished, Refresh status</Text>
+        </TouchableOpacity>
+
+        {/* Logout Section */}
+        <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: '#EEE', width: '100%', paddingTop: 16 }}>
+          <TouchableOpacity 
+            style={{ alignItems: 'center', padding: 8 }} 
+            onPress={handleLogout}
+          >
+            <Text style={{ color: '#FF3B30', fontWeight: '600', fontSize: 14 }}>Log out</Text>
           </TouchableOpacity>
         </View>
       </View>
-    );
-  }
+    </View>
+  );
+}
 
 
 

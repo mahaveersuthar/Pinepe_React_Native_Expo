@@ -20,11 +20,11 @@
   "state": null,
   "city": null,
   "address": null,
-  "wallet_balance": "576.00",
+  "wallet_balance": "777.30",
   "wallet_hold": "100.00",
   "wallet_status": "active",
   "created_at": "2025-10-28T10:36:33.000000Z",
-  "updated_at": "2026-01-08T10:06:43.000000Z",
+  "updated_at": "2026-01-13T08:25:29.000000Z",
   "parent_name": "Super Admin",
   "parent": {
     "id": 1,
