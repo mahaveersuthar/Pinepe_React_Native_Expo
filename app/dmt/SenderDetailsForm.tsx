@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  NativeModules,
 } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import * as SecureStore from "expo-secure-store";
@@ -24,7 +25,7 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 import Toast from "react-native-toast-message";
-import { requestSenderOtpApi } from "../api/dmt.api";
+import { createSenderApi, requestSenderOtpApi } from "../api/dmt.api";
 import { getLatLong } from "@/utils/location";
 
 // Asset Imports - Ensure these paths are correct for your project
@@ -59,6 +60,7 @@ export default function SenderDetailsForm({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [biometricDevice, setBiometricDevice] = useState<"Mantra" | "Morpho">("Mantra");
   const [biometricData, setBiometricData] = useState<string | null>(null);
+  const { MantraRD } = NativeModules;
 
   const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormInputs>({
     defaultValues: {
@@ -86,91 +88,180 @@ export default function SenderDetailsForm({
     }
   };
 
- // MODIFIED: Dummy handleStartScan for testing
   const handleStartScan = async () => {
-    setIsScanning(true);
-    
-    Toast.show({
-      type: "info",
-      text1: `Connecting to ${biometricDevice}...`,
-      text2: "Testing Mode: Simulating Fingerprint Capture",
-    });
+    if (biometricDevice !== "Mantra") {
+      Toast.show({
+        type: "info",
+        text1: "Unsupported Device",
+        text2: "Only Mantra is supported currently",
+      });
+      return;
+    }
 
-    // Simulate a 2-second delay for the scanner
-    setTimeout(() => {
-      const dummyPidData = `<?xml version="1.0"?><PidData><Resp errCode="0" errInfo="Success" fCount="1" fType="0" nmPoints="65" qScore="80" /><DeviceInfo dpId="MANTRA.RD.001" rdsId="MANTRA.RD.001" rdsVer="1.0.4" mi="Device123" mc="MC123" /><Skey ci="20250101">DUMMY_SKEY_DATA</Skey><Hmac>DUMMY_HMAC</Hmac><Data type="X">DUMMY_ENCRYPTED_BIOMETRIC_DATA_FOR_TESTING</Data></PidData>`;
-      
-      setBiometricData(dummyPidData);
-      setIsScanning(false);
-      
+    try {
+      setIsScanning(true);
+      setBiometricData(null);
+
+      if (!MantraRD) {
+        Toast.show({
+          type: "error",
+          text1: "Device Error",
+          text2: "Mantra RD Service not linked",
+        });
+        return;
+      }
+
+      Toast.show({
+        type: "info",
+        text1: "Place Finger on Scanner",
+        text2: "Waiting for Mantra device...",
+      });
+
+      const pidXml: string = await MantraRD.captureFingerprint();
+      console.log("==MANTRA PID XML==", pidXml);
+
+      if (!pidXml || !pidXml.includes("<PidData")) {
+        Toast.show({
+          type: "error",
+          text1: "Scan Failed",
+          text2: "Invalid biometric data received",
+        });
+        return;
+      }
+
+      setBiometricData(pidXml);
+
       Toast.show({
         type: "success",
-        text1: "Scan Successful",
-        text2: "Dummy PID Data captured for testing.",
+        text1: "Fingerprint Captured",
+        text2: "Biometric data received successfully",
       });
-    }, 2000);
+
+    } catch (error: any) {
+      console.error("Mantra Scan Error:", error);
+
+      Toast.show({
+        type: "error",
+        text1: "Scan Failed",
+        text2: error?.message || "Fingerprint capture failed",
+      });
+
+    } finally {
+      setIsScanning(false);
+    }
   };
 
- // Inside SenderDetailsForm component
+
+
 const onSubmit = async (data: FormInputs) => {
   if (!biometricData) {
     Toast.show({
       type: "error",
       text1: "Biometric Required",
-      text2: "Please scan your finger before requesting OTP",
+      text2: "Please scan your finger before proceeding",
     });
     return;
   }
 
   setIsSubmitting(true);
+
   try {
-    // 1. Get location & token (Use your existing utils)
-    const location = await getLatLong(); 
+    const location = await getLatLong();
     const token = await SecureStore.getItemAsync("userToken");
 
-    // 2. Prepare Payload
-    const payload = {
+    if (!token) {
+      Toast.show({
+        type: "error",
+        text1: "Session Expired",
+        text2: "Please login again",
+      });
+      return;
+    }
+
+    // 🔹 STEP 1: SEND OTP
+    if (!isOtpStep) {
+      const payload = {
+        uidNumber: data.uidNumber,
+        customerId: data.customerId,
+        name: data.name,
+        pipe: data.pipe,
+        pidData: biometricData,
+        address: data.address,
+        dateOfBirth: data.dateOfBirth,
+      };
+
+      const res = await requestSenderOtpApi({
+        token,
+        latitude: String(location?.latitude || "0.0"),
+        longitude: String(location?.longitude || "0.0"),
+        payload,
+      });
+
+      if (res.success || res.status === "Success") {
+        setIsOtpStep(true);
+        Toast.show({
+          type: "success",
+          text1: "OTP Sent",
+          text2: "Please enter the OTP received on mobile",
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "OTP Failed",
+          text2: res.message || "Unable to send OTP",
+        });
+      }
+
+      return;
+    }
+
+    // 🔹 STEP 2: VERIFY OTP & CREATE SENDER
+    const createPayload = {
       uidNumber: data.uidNumber,
       customerId: data.customerId,
       name: data.name,
       pipe: data.pipe,
-      pidData: biometricData, // Ensure this is the XML from the scanner
+      pidData: biometricData,
       address: data.address,
       dateOfBirth: data.dateOfBirth,
+      otp: data.otp,
     };
 
-    // 3. Call API
-    const res = await requestSenderOtpApi({
-      token: token || "",
+    const res = await createSenderApi({
+      token,
       latitude: String(location?.latitude || "0.0"),
       longitude: String(location?.longitude || "0.0"),
-      payload: payload,
+      payload: createPayload,
     });
 
-    if (res.status === "Success" || res.success) {
-      setIsOtpStep(true);
+    if (res.success || res.status === "Success") {
       Toast.show({
         type: "success",
-        text1: "OTP Sent",
-        text2: "Please check the customer's mobile number",
+        text1: "Sender Created",
+        text2: "Registration completed successfully",
       });
+
+      // 🔥 IMPORTANT: inform parent to refresh sender
+      setSenderResponse("00");
     } else {
       Toast.show({
         type: "error",
-        text1: "Request Failed",
-        text2: res.message || "Could not send OTP",
+        text1: "Verification Failed",
+        text2: res.message || "Invalid OTP",
       });
     }
+
   } catch (error: any) {
     Toast.show({
       type: "error",
       text1: "Network Error",
-      text2: error.message,
+      text2: error.message || "Something went wrong",
     });
   } finally {
     setIsSubmitting(false);
   }
 };
+
 
   return (
     <View style={styles.container}>
@@ -181,7 +272,7 @@ const onSubmit = async (data: FormInputs) => {
         <View style={styles.divider} />
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          
+
           {/* Full Name */}
           <InputLabel label="Full Name" icon={<User size={14} color="#64748B" />} />
           <Controller
@@ -189,11 +280,11 @@ const onSubmit = async (data: FormInputs) => {
             name="name"
             rules={{ required: "Name is required" }}
             render={({ field: { onChange, value } }) => (
-              <TextInput 
-                style={[styles.input, errors.name && styles.inputError]} 
-                value={value} 
-                onChangeText={onChange} 
-                placeholder="Full Name as per Aadhaar" 
+              <TextInput
+                style={[styles.input, errors.name && styles.inputError]}
+                value={value}
+                onChangeText={onChange}
+                placeholder="Full Name as per Aadhaar"
               />
             )}
           />
@@ -210,9 +301,9 @@ const onSubmit = async (data: FormInputs) => {
 
           {/* Date of Birth Trigger */}
           <InputLabel label="Date of Birth" icon={<Calendar size={14} color="#64748B" />} />
-          <TouchableOpacity 
+          <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setShowDatePicker(true)} 
+            onPress={() => setShowDatePicker(true)}
             style={[styles.input, styles.datePickerContainer, errors.dateOfBirth && styles.inputError]}
           >
             <Text style={{ color: dobValue ? "#1E293B" : "#94A3B8" }}>
@@ -238,13 +329,13 @@ const onSubmit = async (data: FormInputs) => {
             name="uidNumber"
             rules={{ required: "Aadhaar is required", minLength: 12 }}
             render={({ field: { onChange, value } }) => (
-              <TextInput 
-                style={[styles.input, errors.uidNumber && styles.inputError]} 
-                value={value} 
-                onChangeText={onChange} 
-                placeholder="12 Digit Aadhaar Number" 
-                keyboardType="number-pad" 
-                maxLength={12} 
+              <TextInput
+                style={[styles.input, errors.uidNumber && styles.inputError]}
+                value={value}
+                onChangeText={onChange}
+                placeholder="12 Digit Aadhaar Number"
+                keyboardType="number-pad"
+                maxLength={12}
               />
             )}
           />
@@ -255,13 +346,13 @@ const onSubmit = async (data: FormInputs) => {
             control={control}
             name="address"
             render={({ field: { onChange, value } }) => (
-              <TextInput 
-                style={[styles.input, styles.textArea]} 
-                value={value} 
-                onChangeText={onChange} 
-                placeholder="Residential Address" 
-                multiline 
-                numberOfLines={3} 
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={value}
+                onChangeText={onChange}
+                placeholder="Residential Address"
+                multiline
+                numberOfLines={3}
               />
             )}
           />
@@ -304,13 +395,13 @@ const onSubmit = async (data: FormInputs) => {
                 control={control}
                 name="otp"
                 render={({ field: { onChange, value } }) => (
-                  <TextInput 
-                    style={styles.input} 
-                    value={value} 
-                    onChangeText={onChange} 
-                    keyboardType="number-pad" 
-                    maxLength={4} 
-                    placeholder="4 Digit OTP" 
+                  <TextInput
+                    style={styles.input}
+                    value={value}
+                    onChangeText={onChange}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    placeholder="4 Digit OTP"
                   />
                 )}
               />
@@ -372,18 +463,18 @@ const styles = StyleSheet.create({
   biometricBox: { marginTop: 15, padding: 12, backgroundColor: "#F8FAFC", borderRadius: 10, borderWidth: 1, borderColor: "#E2E8F0" },
   sectionLabel: { fontSize: 12, fontWeight: "700", color: "#475569", marginBottom: 10 },
   deviceRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  deviceBtn: { 
-    flex: 1, 
-    height: 75, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    borderRadius: 10, 
-    borderWidth: 1, 
-    borderColor: "#CBD5E1", 
-    backgroundColor: "#FFF" 
+  deviceBtn: {
+    flex: 1,
+    height: 75,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFF"
   },
-  deviceBtnActive: { 
-    backgroundColor: theme.colors.primary[50], 
+  deviceBtnActive: {
+    backgroundColor: theme.colors.primary[50],
     borderColor: theme.colors.primary[500],
     borderWidth: 1.5,
   },

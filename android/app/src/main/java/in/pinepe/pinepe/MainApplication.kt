@@ -15,6 +15,8 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
+import `in`.pinepe.pinepe.aeps.AepsPackage
+import `in`.pinepe.pinepe.mantra.MantraPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -25,6 +27,8 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
+              add(AepsPackage())
+              add(MantraPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

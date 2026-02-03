@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, NativeModules } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { theme } from "@/theme";
 import OnboardingForm from "./OnboardingForm";
@@ -12,6 +12,8 @@ import { getBankItKycStatusApi, Pipe } from "../api/service.api"; // Ensure Pipe
 import { apiClient } from "../api/api.client";
 import { useRouter } from "expo-router";
 
+const { AepsModule } = NativeModules;
+
 export default function AepsScreen() {
   const router = useRouter();
   const [kycLoading, setKycLoading] = useState(true);
@@ -20,10 +22,19 @@ export default function AepsScreen() {
   const [pipes, setPipes] = useState<Pipe[]>([]);
   const [agentCode, setAgentCode] = useState("");
   const [selectedPipe, setSelectedPipe] = useState("");
+  const [aepsReady, setAepsReady] = useState(false);
 
   useEffect(() => {
     fetchKycStatus();
+   
   }, []);
+
+  useEffect(() => {
+  console.log("NativeModules =>", NativeModules);
+  console.log("AepsModule =>", NativeModules?.AepsModule);
+  console.log("startAeps =>", NativeModules?.AepsModule?.startAeps);
+}, []);
+
 
   const fetchKycStatus = async () => {
     try {
@@ -62,54 +73,63 @@ export default function AepsScreen() {
     }
   };
 
-  const handlePostToken = async () => {
-    if (!selectedPipe) {
-      Toast.show({ type: "info", text1: "Please select a pipe type" });
-      return;
-    }
+  const launchAepsSdk = async () => {
+  // ✅ Runtime check (always correct)
+  if (!AepsModule || typeof AepsModule.startAeps !== "function") {
+    Toast.show({
+      type: "error",
+      text1: "AEPS Not Ready",
+      text2: "Native AEPS module not available",
+    });
+    return;
+  }
 
-    try {
-      setSubmitting(true);
-      const location = await getLatLong();
-      const token = await SecureStore.getItemAsync("userToken");
+  if (!selectedPipe) {
+    Toast.show({ type: "info", text1: "Please select a pipe" });
+    return;
+  }
 
-      const res = await apiClient({
-        endpoint: "/bankit/kyc/token",
-        method: "POST",
-        body: { agentCode, pipe: selectedPipe },
-        headers: {
-          Authorization: `Bearer ${token}`,
-          latitude: String(location?.latitude || "0.0"),
-          longitude: String(location?.longitude || "0.0"),
-        },
-      });
+  try {
+    setSubmitting(true);
 
-      console.log("==resToken==", res)
+    Toast.show({
+      type: "info",
+      text1: "Launching AEPS",
+      text2: "Please wait...",
+    });
 
-      if (res.success && res.data.loginUrl) {
-        const targetUrl = res.data.loginUrl;
+    const response = await AepsModule.startAeps(
+      agentCode,                    // BC Code
+      "RAMESHWAR LAL JAKHAR261123", // Merchant Name
+      "7ohd84b9oy",                 // Merchant / Client Key
+      selectedPipe                 // Pipe
+    );
 
-        
-        setTimeout(() => {
-          router.push({
-            pathname: "/aeps/WebView",
-            params: {
-              url: targetUrl,
-              pipe: selectedPipe,
-            },
-          });
-        }, 2000);
+    const parsed = JSON.parse(response);
+
+    console.log("==AEPS RESULT==", parsed);
+
+    Toast.show({
+      type: "success",
+      text1: "AEPS Completed",
+      text2: parsed?.message || "Transaction finished",
+    });
+
+  } catch (e: any) {
+    console.log("==AEPS ERROR==", e);
+
+    Toast.show({
+      type: "error",
+      text1: "AEPS Failed / Cancelled",
+      text2: e?.message || "User cancelled transaction",
+    });
+  } finally {
+    setSubmitting(false);
+  }
+};
 
 
-      } else {
-        Toast.show({ type: "error", text1: res.message || "Token generation failed" });
-      }
-    } catch (error) {
-      Toast.show({ type: "error", text1: "Connection Error" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+
 
   if (kycLoading) {
     return (
@@ -205,7 +225,7 @@ export default function AepsScreen() {
                 styles.submitBtn,
                 (submitting || !selectedPipe) && { opacity: 0.6, backgroundColor: "#CBD5E1" }
               ]}
-              onPress={handlePostToken}
+              onPress={launchAepsSdk}
               disabled={submitting || !selectedPipe}
             >
               {submitting ? (

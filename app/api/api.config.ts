@@ -20,6 +20,7 @@ export const API_CONFIG = {
 
   DEFAULT_HEADERS: {
     Accept: "application/json",
+    Type:"app"
    
   },
 };

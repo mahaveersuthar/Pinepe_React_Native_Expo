@@ -94,9 +94,44 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        multiDexEnabled true
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
+
+     flavorDimensions "default"
+
+      productFlavors {
+
+        pinepe {
+            dimension "default"
+            applicationIdSuffix ".pinepe"
+            
+        }
+
+        cashpe {
+            dimension "default"
+            applicationIdSuffix ".cashpe"
+            
+        }
+
+        laxmeepay {
+            dimension "default"
+            applicationIdSuffix ".laxmeepay"
+            
+        }
+
+        nkpay {
+            dimension "default"
+            applicationIdSuffix ".nkpay"
+            
+        }
+    }
+
+
+
+
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -153,6 +188,26 @@ android {
 }
 
 dependencies {
+
+    // AEPS SDK (local AAR)
+    implementation fileTree(dir: "libs", include: ["*.jar", "*.aar"])
+
+    // Room (AndroidX)
+    implementation 'androidx.room:room-runtime:2.0.0'
+    annotationProcessor 'androidx.room:room-compiler:2.0.0'
+
+    // Google Location
+    implementation 'com.google.android.gms:play-services-location:17.0.0'
+
+    // Networking
+    implementation 'com.squareup.okhttp3:okhttp:3.4.1'
+    implementation 'com.squareup.retrofit2:retrofit:2.1.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.1.0'
+
+    // SDP
+    implementation 'com.intuit.sdp:sdp-android:1.0.6'
+    implementation 'com.google.android.material:material:1.11.0'
+    
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
