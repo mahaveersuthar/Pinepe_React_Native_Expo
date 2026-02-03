@@ -100,33 +100,33 @@ android {
     }
 
      flavorDimensions "default"
+        productFlavors {
 
-      productFlavors {
-
-        pinepe {
-            dimension "default"
-            applicationIdSuffix ".pinepe"
-            
-        }
-
-        cashpe {
-            dimension "default"
-            applicationIdSuffix ".cashpe"
-            
-        }
-
-        laxmeepay {
-            dimension "default"
-            applicationIdSuffix ".laxmeepay"
-            
-        }
-
-        nkpay {
-            dimension "default"
-            applicationIdSuffix ".nkpay"
-            
-        }
+    pinepe {
+        dimension "default"
+        applicationIdSuffix ".pinepe"
+        
     }
+
+    cashpe {
+        dimension "default"
+        applicationIdSuffix ".cashpe"
+        
+    }
+
+    laxmeepay {
+        dimension "default"
+        applicationIdSuffix ".laxmeepay"
+       
+    }
+
+    nkpay {
+        dimension "default"
+        applicationIdSuffix ".nkpay"
+        
+    }
+}
+
 
 
 
