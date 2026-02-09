@@ -22,6 +22,7 @@ import { theme } from "@/theme";
 import { AnimatedCard } from "@/components/animated/AnimatedCard";
 import { getLatLong } from "@/utils/location";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import * as SecureStore from "expo-secure-store";
 import { getTransactionsApi } from "../api/transaction.api";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -56,6 +57,8 @@ export default function TransactionsScreen() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
+
+  const { domainName: brandingDomain } = useBranding();
 
 
   const [page, setPage] = useState(1);
@@ -109,7 +112,7 @@ export default function TransactionsScreen() {
       }
 
       const payload: any = {
-        domain: Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
+        domain: brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
         latitude: location.latitude,
         longitude: location.longitude,
         token: userToken.current,

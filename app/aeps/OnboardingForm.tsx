@@ -16,6 +16,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import Toast from "react-native-toast-message";
 import { 
   User, 
@@ -49,6 +50,8 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
     resolver: zodResolver(kycSchema),
     mode: 'onTouched',
   });
+
+  const { domainName: brandingDomain } = useBranding();
 
   const states = Object.keys(city).sort();
 
@@ -113,8 +116,7 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
       const token = await SecureStore.getItemAsync("userToken");
       const userRaw = await SecureStore.getItemAsync("userData");
       const userId = userRaw ? JSON.parse(userRaw).id : "70"; 
-      const tenantData = Constants.expoConfig?.extra?.tenantData;
-      const domainName = tenantData?.domain || "pinepe.in";
+      const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
 
       const formData = new FormData();
 

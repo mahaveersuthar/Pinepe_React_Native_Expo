@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 import Constants from 'expo-constants';
+import { useBranding } from '@/context/BrandingContext';
 import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
@@ -34,8 +35,8 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName } = useBranding();
+  const domain = domainName || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
   const handleLogin = async () => {
     setError("");
@@ -70,7 +71,7 @@ export default function LoginScreen() {
           password,
         },
         {
-          domain: domainName,
+          domain: domain,
           latitude: location.latitude,
           longitude: location.longitude,
         }

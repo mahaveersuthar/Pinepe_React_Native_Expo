@@ -2,18 +2,24 @@
 import React from "react";
 import { View, Image, StyleSheet, ViewStyle } from "react-native";
 import { theme } from "@/theme";
+import { useBranding } from '@/context/BrandingContext';
 
 interface BrandedLogoProps {
   size?: number;
   style?: ViewStyle;
 }
 
-const APP_ICON = require("@/assets/generated/icon.png");
+
 
 export const BrandedLogo = ({
   size = 120,
   style,
 }: BrandedLogoProps) => {
+  const { logoUrl } = useBranding();
+  console.log("logoURl",logoUrl)
+
+  const source = { uri: logoUrl }
+
   return (
     <View
       style={[
@@ -23,7 +29,7 @@ export const BrandedLogo = ({
       ]}
     >
       <Image
-        source={APP_ICON}
+        source={source as any}
         style={styles.image}
         resizeMode="contain"
       />

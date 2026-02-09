@@ -4,6 +4,7 @@ import { Plus, Calendar, Hash, MessageSquare, AlertCircle } from "lucide-react-n
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl } from "react-native"
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import { useCallback, useEffect, useState } from 'react';
 import { getLatLong } from "@/utils/location";
 import { getTicketsApi } from "../api/complaintsTickets.api";
@@ -16,8 +17,8 @@ const MyComplaints = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    const tenantData = Constants.expoConfig?.extra?.tenantData;
-    const domainName = tenantData?.domain || "laxmeepay.com";
+    const { domainName: brandingDomain } = useBranding();
+    const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
     const fetchTickets = async (pageNumber = 1, isRefreshing = false) => {
         try {

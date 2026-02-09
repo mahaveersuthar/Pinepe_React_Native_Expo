@@ -12,6 +12,7 @@ import { getLatLong } from '@/utils/location';
 import * as SecureStore from "expo-secure-store";
 import { getTransactionsApi } from '../api/transaction.api';
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import Toast from 'react-native-toast-message';
 import { createShimmerPlaceholder } from "react-native-shimmer-placeholder";
 import { Link, router } from 'expo-router';
@@ -62,6 +63,8 @@ export default function HomeScreen() {
   const [servicesLoading, setServicesLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
 
+  const { domainName: brandingDomain } = useBranding();
+
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -86,8 +89,7 @@ export default function HomeScreen() {
       setTransactionsLoading(true);
       const location = await getLatLong();
       const token = await SecureStore.getItemAsync("userToken");
-      const tenantData = Constants.expoConfig?.extra?.tenantData;
-      const domainName = tenantData?.domain || "laxmeepay.com";
+      const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
       if (!location || !token) return;
 
@@ -140,8 +142,7 @@ export default function HomeScreen() {
 
       const location = await getLatLong();
       const token = await SecureStore.getItemAsync("userToken");
-      const tenantData = Constants.expoConfig?.extra?.tenantData;
-      const domainName = tenantData?.domain || "laxmeepay.com";
+      const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
       if (!location || !token) return;
 
@@ -176,8 +177,7 @@ export default function HomeScreen() {
 
       const location = await getLatLong();
       const token = await SecureStore.getItemAsync("userToken");
-      const tenantData = Constants.expoConfig?.extra?.tenantData;
-      const domainName = tenantData?.domain || "laxmeepay.com";
+      const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
       if (!location || !token) return;
 
       const res = await getProfileApi({
@@ -186,11 +186,15 @@ export default function HomeScreen() {
         longitude: location.longitude,
         token,
       });
+      console.log("hello")
+
+      console.log("res",res)
 
       if (res.success) {
         setProfileData(res.data);
       }
     } catch (err: any) {
+      console.log(":errre")
       Toast.show({
         type: "error",
         text1: "Failed to fetch profile",
@@ -207,8 +211,7 @@ export default function HomeScreen() {
 
       const location = await getLatLong();
       const token = await SecureStore.getItemAsync("userToken");
-      const tenantData = Constants.expoConfig?.extra?.tenantData;
-      const domainName = tenantData?.domain || "laxmeepay.com";
+      const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
       if (!location || !token) return;
 

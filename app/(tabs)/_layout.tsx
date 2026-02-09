@@ -5,17 +5,31 @@ import { theme } from '@/theme';
 import { useEffect, useState } from 'react';
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import { getLatLong } from '@/utils/location';
 import { getKycStatusApi } from '../api/kyc.api';
 import * as Linking from 'expo-linking';
 import { useAuth } from '@/context/AuthContext';
+import * as Application from 'expo-application';
 
 export default function TabLayout() {
   const [kycLoading, setKycLoading] = useState(true);
   const [isKycDone, setIsKycDone] = useState(false);
-  const handleOpenKYC = () => {
-    Linking.openURL('https://app.pinepe.in/login');
-  };
+  const appName = (Application.applicationName || '').toString().trim();
+
+  const { domainName: brandingDomain } = useBranding();
+  const generateLoginUrl = (domain?: string | null): string => {
+  if (!domain) return "";
+
+  // Remove protocol if accidentally passed
+  const cleanDomain = domain
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "");
+
+  return `https://${cleanDomain}/login`;
+};
+
+ 
   const { signOut, hasMPIN } = useAuth();
 
    const handleLogout = () => {
@@ -40,8 +54,8 @@ export default function TabLayout() {
 
       const location = await getLatLong();
       const token = await SecureStore.getItemAsync("userToken");
-      const tenantData = Constants.expoConfig?.extra?.tenantData;
-      const domainName = tenantData?.domain || "laxmeepay.com";
+      
+      const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
       if (!token) return;
 
@@ -113,9 +127,9 @@ export default function TabLayout() {
         {/* Main Action: Link to PinePe */}
         <TouchableOpacity 
           style={{ backgroundColor: theme.colors.primary[500], width: '100%', padding: 16, borderRadius: 12, alignItems: 'center' }} 
-          onPress={() => Linking.openURL('https://app.pinepe.in/login')}
+          onPress={() => Linking.openURL(generateLoginUrl(brandingDomain))}
         >
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Login to PinePe</Text>
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Login to {appName}</Text>
         </TouchableOpacity>
 
         {/* Secondary Action: Refresh Status */}

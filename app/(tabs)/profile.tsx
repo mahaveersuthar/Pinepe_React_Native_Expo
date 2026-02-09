@@ -25,6 +25,7 @@ import {
 import * as SecureStore from "expo-secure-store";
 import * as ImagePicker from "expo-image-picker";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import Toast from "react-native-toast-message";
 
 import { theme } from "@/theme";
@@ -58,8 +59,8 @@ export default function ProfileScreen() {
   const [showEditProfile, setShowEditProfile] = useState(false);
 
   const [showSetupMPIN, setShowSetupMPIN] = useState(false);
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName: brandingDomain } = useBranding();
+  const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
   const [mpinLoading, setMpinLoading] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
 

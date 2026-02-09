@@ -26,6 +26,7 @@ import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { getLatLong } from '@/utils/location';
 import { verifyOtpApi } from '../api/auth.api';
 import Constants from 'expo-constants';
+import { useBranding } from '@/context/BrandingContext';
 
 const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 const OTP_LENGTH = 4;
@@ -37,8 +38,8 @@ export default function OTPScreen() {
     from: string;
   }>();
 
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName: brandingDomain } = useBranding();
+  const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);

@@ -17,6 +17,7 @@ import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import Constants from 'expo-constants';
+import { useBranding } from '@/context/BrandingContext';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
 import { getLatLong } from '@/utils/location';
 import { resetPasswordApi } from '../api/auth.api';
@@ -33,8 +34,8 @@ export default function ResetPasswordScreen() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    const tenantData = Constants.expoConfig?.extra?.tenantData;
-    const domainName = tenantData?.domain || "laxmeepay.com";
+    const { domainName: brandingDomain } = useBranding();
+    const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
     const handleResetPassword = async () => {
         if (!password || !confirmPassword) {

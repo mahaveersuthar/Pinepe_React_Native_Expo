@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native'
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import { doPayoutTransferApi, getActiveRecipientsApi, getPaymentMethodsApi } from '../api/payout.api'
 import Toast from 'react-native-toast-message'
 import { getProfileApi } from '../api/profile.api'
@@ -40,8 +41,8 @@ const RequestPayout = () => {
     const [transferModeValue, setTransferModeValue] = useState("All");
     const [transferMode, setTransferMode] = useState([]);
     const [transferModeLoading, setTransferModeLoading] = useState(false);
-    const tenantData = Constants.expoConfig?.extra?.tenantData;
-    const domainName = tenantData?.domain || "laxmeepay.com";
+    const { domainName: brandingDomain } = useBranding();
+    const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
     const [openBene, setOpenBene] = useState(false);
     const [beneValue, setBeneValue] = useState(null);
     const [beneList, setBeneList] = useState<BeneficiaryDropdownItem[]>([]);

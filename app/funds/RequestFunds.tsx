@@ -28,6 +28,7 @@ import { AnimatedCard } from "@/components/animated/AnimatedCard";
 import * as Clipboard from "expo-clipboard";
 import { getLatLong } from "@/utils/location";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import * as SecureStore from "expo-secure-store";
 import {
     getAdminBanksApi,
@@ -84,6 +85,8 @@ const RequestFunds = () => {
     const isPdf = (type?: string) => {
         return type === "application/pdf";
     };
+
+    const { domainName: brandingDomain } = useBranding();
 
 
     const handleDocumentUpload = async () => {
@@ -145,7 +148,7 @@ const RequestFunds = () => {
             if (!location || !token) return;
 
             const options = {
-                domain: Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
+                domain: brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
                 token,
                 latitude: String(location.latitude),
                 longitude: String(location.longitude),
@@ -190,7 +193,7 @@ const RequestFunds = () => {
             if (!location || !userToken.current) return;
 
             const options: GetAdminBanksOptions = {
-                domain: Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
+                domain: brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
                 token: userToken.current,
                 latitude: String(location.latitude),
                 longitude: String(location.longitude),

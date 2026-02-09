@@ -19,6 +19,7 @@ import Toast from "react-native-toast-message"; // 1. Import Toast
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 
 import { theme } from "@/theme";
 import CustomInput from "./CustomInput";
@@ -68,7 +69,8 @@ export default function CreateRecipientModal({
   const [bankOpen, setBankOpen] = useState(false);
   const [pipeOpen, setPipeOpen] = useState(false);
 
-  const domain = Constants.expoConfig?.extra?.tenantData?.domain ?? "laxmeepay.com";
+  const { domainName: brandingDomain, tenant } = useBranding();
+  const domain = brandingDomain || "laxmeepay.com";
 
   const loadBankList = useCallback(async () => {
     try {

@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Eye, EyeOff, ChevronDown } from 'lucide-react-native';
 import Toast from 'react-native-toast-message'; // 1. Import Toast
 import Constants from 'expo-constants';
+import { useBranding } from '@/context/BrandingContext';
 import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
@@ -47,8 +48,8 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
 
   // Domain configuration
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName: brandingDomain } = useBranding();
+  const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
   const addIndiaCountryCode = (phone: string): string => {
     if (!phone) return "";

@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import { View, StyleSheet, Image } from "react-native";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
+import * as SplashScreen from 'expo-splash-screen';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,15 +16,16 @@ interface SplashScreenProps {
   onComplete?: () => void;
 }
 
-const tenant = Constants.expoConfig?.extra?.tenantData ?? null;
 
-const APP_ICON = require("@/assets/generated/icon.png");
 
-export default function SplashScreen({ onComplete }: SplashScreenProps) {
+export default function SplashScreenComponent({ onComplete }: SplashScreenProps) {
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
+    // Hide native splash immediately
+    SplashScreen.hideAsync();
+
     scale.value = withSequence(
       withSpring(1.2, { damping: 10 }),
       withSpring(1, { damping: 15 })
@@ -41,14 +44,13 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     opacity: opacity.value,
   }));
 
+  const { logoUrl } = useBranding();
+  const source = { uri: logoUrl }
+
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.content, animatedStyle]}>
-        <Image
-          source={APP_ICON}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <Image source={source as any} style={styles.logo} resizeMode="contain" />
       </Animated.View>
     </View>
   );

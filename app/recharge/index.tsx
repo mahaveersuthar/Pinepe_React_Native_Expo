@@ -32,6 +32,7 @@ import Toast from "react-native-toast-message";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 
 // Internal Imports
 import { operators } from "@/utils/operators";
@@ -99,6 +100,8 @@ export default function RechargeScreen() {
     const [verifyingMpin, setVerifyingMpin] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
+    const { domainName: brandingDomain } = useBranding();
+
 
     // Helper to render keypad buttons
   const KeyButton = ({ value, onPress, isDelete = false }: any) => {
@@ -147,7 +150,7 @@ export default function RechargeScreen() {
             setDetecting(true);
             const location = await getLatLong();
             const token = await SecureStore.getItemAsync("userToken");
-            const domainName = Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
+            const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
 
             const res = await checkOperatorApi({
                 mobile: mobileNumber,
@@ -191,8 +194,7 @@ export default function RechargeScreen() {
 
             const location = await getLatLong();
             const token = await SecureStore.getItemAsync("userToken");
-            const domainName =
-                Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
+            const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
 
             const res = await checkROffersApi({
                 mobile,
@@ -235,7 +237,7 @@ export default function RechargeScreen() {
             setFetchingPlans(true);
             const location = await getLatLong();
             const token = await SecureStore.getItemAsync("userToken");
-            const domainName = Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
+            const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
 
             console.log("==operator code==", operatorCode)
             console.log("==circle code==", circleCode)
@@ -301,7 +303,7 @@ export default function RechargeScreen() {
             setVerifyingMpin(true);
             const location = await getLatLong();
             const token = await SecureStore.getItemAsync("userToken");
-            const domainName = Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
+            const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
 
             const res = await confirmMpinApi({
                 domain: domainName,

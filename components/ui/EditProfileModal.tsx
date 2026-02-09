@@ -21,6 +21,7 @@ import { X, Camera } from "lucide-react-native";
 import Toast from "react-native-toast-message";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 
 import { theme } from "@/theme";
 import { getLatLong } from "@/utils/location";
@@ -43,8 +44,8 @@ export function EditProfileModal({
 }: Props) {
   const translateY = useSharedValue(500);
 
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName: brandingDomain, tenant } = useBranding();
+  const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({

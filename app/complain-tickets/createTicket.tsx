@@ -8,6 +8,7 @@ import { Ticket, AlignLeft, Send, CheckCircle } from "lucide-react-native";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import { getLatLong } from "@/utils/location";
 import Toast from "react-native-toast-message";
 import { createTicketApi } from "../api/complaintsTickets.api";
@@ -20,6 +21,8 @@ const CreateTicket = () => {
     const [priority, setPriority] = useState("low");
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    const { domainName: brandingDomain } = useBranding();
 
     const priorities = [
         { label: "Low Priority", value: "low" },
@@ -37,7 +40,7 @@ const CreateTicket = () => {
             setLoading(true);
             const location = await getLatLong();
             const token = await SecureStore.getItemAsync("userToken");
-            const domain = Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
+            const domain = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
             const res = await createTicketApi({
                 subject,

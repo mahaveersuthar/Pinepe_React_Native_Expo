@@ -47,6 +47,8 @@ export const apiClient = async ({
     body: isFormData ? body : body ? JSON.stringify(body) : undefined,
   });
 
+  console.log("API RESPONSE",response)
+
   const json = await response.json();
 
   if (!response.ok) {

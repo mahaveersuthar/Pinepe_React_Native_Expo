@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import { getAllPlansApi, getAssignedPlanApi, upgradePlanApi } from '../api/plansAndSubs.api';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons'; // Ensure you have expo-vector-icons installed
@@ -16,8 +17,8 @@ import { MpinVerificationModal } from '@/components/ui/CustomMPINModal';
 const MyPlans = () => {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const [plansLoading, setPlansLoading] = useState(false);
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName: brandingDomain } = useBranding();
+  const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
   const [allPlans, setAllPlans] = useState([]);
   const [assignedPlan, setAssignedPlan] = useState<any>(null);
   const [showMpin, setShowMpin] = useState(false);

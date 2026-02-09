@@ -20,6 +20,7 @@ import { X } from "lucide-react-native";
 import Toast from "react-native-toast-message";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 
 import { theme } from "@/theme";
 import { getLatLong } from "@/utils/location";
@@ -35,8 +36,8 @@ export function SetupMPINModal({ visible, onClose, onSuccess }: Props) {
   const translateY = useSharedValue(500);
   const shake = useSharedValue(0);
 
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName: brandingDomain, tenant } = useBranding();
+  const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
   const [otp, setOtp] = useState("");
   const [mpin, setMpin] = useState("");

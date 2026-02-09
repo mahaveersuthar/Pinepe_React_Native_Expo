@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Search, Package } from "lucide-react-native";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import * as SecureStore from "expo-secure-store";
 import Toast from "react-native-toast-message";
 import { useRouter } from "expo-router";
@@ -52,8 +53,8 @@ export default function ServicesScreen() {
 
   const router = useRouter();
 
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName: brandingDomain } = useBranding();
+  const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
   /* ===========================
       FETCH SERVICES

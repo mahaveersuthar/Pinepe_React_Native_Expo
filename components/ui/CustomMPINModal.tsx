@@ -22,6 +22,7 @@ import Animated, {
 import Toast from "react-native-toast-message";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import { confirmMpinApi } from "@/app/api/mpin.api";
 import { getLatLong } from "@/utils/location";
 
@@ -42,6 +43,8 @@ export const MpinVerificationModal = ({
 }: Props) => {
     const [mpin, setMpin] = useState("");
     const [verifying, setVerifying] = useState(false);
+
+    const { domainName: brandingDomain } = useBranding();
 
 
     useEffect(() => {
@@ -68,8 +71,7 @@ export const MpinVerificationModal = ({
 
     const location = await getLatLong();
     const token = await SecureStore.getItemAsync("userToken");
-    const domain =
-      Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
+    const domain = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
     const res = await confirmMpinApi({
       domain,

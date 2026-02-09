@@ -24,6 +24,7 @@ import {
     Plus
 } from "lucide-react-native";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import * as SecureStore from "expo-secure-store";
 import { getLatLong } from "@/utils/location";
 import { theme } from "@/theme";
@@ -45,6 +46,8 @@ const FundsScreen = () => {
     const [fundRequests, setFundRequests] = useState<any[]>([]);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+    const { domainName: brandingDomain } = useBranding();
+
     // --- API Logic ---
     const fetchFundRequests = async (targetPage = 1, isLoadMore = false, isRefreshing = false) => {
         if (isLoadMore && (loadingMore || !hasMore)) return;
@@ -62,7 +65,7 @@ const FundsScreen = () => {
             if (!location || !userToken.current) return;
 
             const res = await getFundRequestsApi({
-                domain: Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
+                domain: brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com",
                 latitude: location.latitude,
                 longitude: location.longitude,
                 token: userToken.current,

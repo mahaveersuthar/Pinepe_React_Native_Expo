@@ -5,6 +5,7 @@ import { theme } from "@/theme";
 import OnboardingForm from "./OnboardingForm";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import { Hourglass, ShieldCheck, ChevronRight, Building2 } from "lucide-react-native";
 import Toast from "react-native-toast-message";
 import { getLatLong } from "@/utils/location";
@@ -24,6 +25,8 @@ export default function AepsScreen() {
   const [selectedPipe, setSelectedPipe] = useState("");
   const [aepsReady, setAepsReady] = useState(false);
 
+  const { domainName: brandingDomain } = useBranding();
+
   useEffect(() => {
     fetchKycStatus();
    
@@ -41,8 +44,7 @@ export default function AepsScreen() {
       setKycLoading(true);
       const location = await getLatLong();
       const token = await SecureStore.getItemAsync("userToken");
-      const tenantData = Constants.expoConfig?.extra?.tenantData;
-      const domainName = tenantData?.domain || "pinepe.in";
+      const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "pinepe.in";
 
       if (!token) return;
 

@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import Toast from 'react-native-toast-message'; // 1. Import Toast
 import Constants from 'expo-constants';
+import { useBranding } from '@/context/BrandingContext';
 import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
@@ -24,8 +25,8 @@ export default function ForgotPasswordScreen() {
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const tenantData = Constants.expoConfig?.extra?.tenantData;
-  const domainName = tenantData?.domain || "laxmeepay.com";
+  const { domainName: brandingDomain } = useBranding();
+  const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
   const handleSubmit = async () => {
     if (!identifier.trim()) {

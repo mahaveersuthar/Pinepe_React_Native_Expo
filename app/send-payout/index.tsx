@@ -9,6 +9,7 @@ import Toast from "react-native-toast-message"
 import { getLatLong } from '@/utils/location';
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { useBranding } from '@/context/BrandingContext';
 import { getPayoutHistoryApi } from '../api/payout.api';
 
 const SendPayoutScreen = () => {
@@ -27,8 +28,8 @@ const SendPayoutScreen = () => {
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    const tenantData = Constants.expoConfig?.extra?.tenantData;
-    const domainName = tenantData?.domain || "laxmeepay.com";
+    const { domainName: brandingDomain } = useBranding();
+    const domainName = brandingDomain || Constants.expoConfig?.extra?.tenantData?.domain || "laxmeepay.com";
 
     // helper to format date for API (YYYY-MM-DD)
     const formatDateForApi = (dateStr: string) => {
