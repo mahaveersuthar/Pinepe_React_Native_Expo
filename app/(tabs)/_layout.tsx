@@ -11,10 +11,14 @@ import { getKycStatusApi } from '../../api/kyc.api';
 import * as Linking from 'expo-linking';
 import { useAuth } from '@/context/AuthContext';
 import * as Application from 'expo-application';
+import { logoutApi } from '@/api/auth.api';
+import KYCApplicationForm from '../KYCApplicationForm';
 
 export default function TabLayout() {
-  const [kycLoading, setKycLoading] = useState(true);
-  const [isKycDone, setIsKycDone] = useState(false);
+  type KycStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED";
+
+const [kycStatus, setKycStatus] = useState<KycStatus>("NOT_SUBMITTED");
+const [kycLoading, setKycLoading] = useState(true);
   const appName = (Application.applicationName || '').toString().trim();
     const { domainName: brandingDomain, tenant } = useBranding();
     const domainName = brandingDomain !;
@@ -35,127 +39,137 @@ export default function TabLayout() {
   const { signOut, hasMPIN } = useAuth();
 
    const handleLogout = () => {
-      Alert.alert("Logout", "Are you sure you want to logout?", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            await SecureStore.deleteItemAsync("userToken");
-            await SecureStore.deleteItemAsync("userData");
-            await signOut();
-            router.replace("/(auth)/login");
-          },
-        },
-      ]);
-    };
+  Alert.alert("Logout", "Are you sure you want to logout?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Logout",
+      style: "destructive",
+      onPress: async () => {
+        try {
+         
+
+          const location = await getLatLong();
+          const token = await SecureStore.getItemAsync("userToken");
+
+          // Call API only if we have required data
+          if (location && token) {
+            try {
+              await logoutApi({
+                latitude: location.latitude,
+                longitude: location.longitude,
+                token,
+              });
+            } catch (apiErr) {
+              // Silent fail – we still logout locally
+              console.log("Logout API failed, proceeding locally");
+            }
+          }
+        } catch (err) {
+          console.log("Logout error:", err);
+        } finally {
+          // 🔐 FORCE LOGOUT LOCALLY (Always runs)
+          await SecureStore.deleteItemAsync("userToken");
+          await SecureStore.deleteItemAsync("userData");
+
+          await signOut();
+          router.replace("/(auth)/login");
+
+         
+        }
+      },
+    },
+  ]);
+};
+
 
   const checkKycStatus = async () => {
-    try {
-      setKycLoading(true);
+  try {
+    setKycLoading(true);
 
-      const location = await getLatLong();
-      const token = await SecureStore.getItemAsync("userToken");
-      
-    
+    const location = await getLatLong();
+    const token = await SecureStore.getItemAsync("userToken");
+    if (!token) return;
 
-      if (!token) return;
+    const res = await getKycStatusApi({
+      latitude: location?.latitude?.toString() || "0",
+      longitude: location?.longitude?.toString() || "0",
+      token,
+    });
 
-      const res = await getKycStatusApi({
-        
-        latitude: location?.latitude?.toString() || "0",
-        longitude: location?.longitude?.toString() || "0",
-        token: token,
-      });
-
-      // Handle based on your provided response structure
-      if (res.success && res.data?.kyc_status === "Approved") {
-        setIsKycDone(true);
-      } else {
-        // This covers res.success: false OR status not being "Approved"
-        setIsKycDone(false);
-      }
-    } catch (err) {
-      console.error("KYC Check Error:", err);
-      setIsKycDone(false);
-    } finally {
-      setKycLoading(false);
+    // 🔥 EXACT BACKEND MAPPING
+    if (res.success === false) {
+      // "KYC not submitted yet"
+      setKycStatus("NOT_SUBMITTED");
+      return;
     }
-  };
+
+    if (res.success === true) {
+      if (res.data?.kyc_status === "Approved") {
+        setKycStatus("APPROVED");
+      } else if (res.data?.kyc_status === "Pending") {
+        setKycStatus("PENDING");
+      } else {
+        setKycStatus("NOT_SUBMITTED");
+      }
+    }
+  } catch (err) {
+    console.error("KYC Check Error:", err);
+    setKycStatus("NOT_SUBMITTED");
+  } finally {
+    setKycLoading(false);
+  }
+};
+
 
   useEffect(() => {
     checkKycStatus();
   }, []);
 
+
   if (kycLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-      </View>
-    );
-  }
-
- if (!isKycDone) {
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background.main, justifyContent: 'center', padding: 20 }}>
-      <View style={{ 
-        backgroundColor: '#fff', 
-        borderRadius: 20, 
-        padding: 24, 
-        alignItems: 'center', 
-        shadowColor: '#000', 
-        shadowOffset: { width: 0, height: 10 }, 
-        shadowOpacity: 0.1, 
-        shadowRadius: 20, 
-        elevation: 5 
-      }}>
-        {/* Icon */}
-        <View style={{ 
-          width: 80, height: 80, borderRadius: 40, 
-          backgroundColor: `${theme.colors.primary[500]}15`, 
-          justifyContent: 'center', alignItems: 'center', marginBottom: 16 
-        }}>
-          <ShieldAlert size={40} color={theme.colors.primary[500]} />
-        </View>
-
-        <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' }}>
-          KYC Verification Required
-        </Text>
-        
-        <Text style={{ fontSize: 14, color: '#666', textAlign: 'center', marginTop: 8, marginBottom: 24, lineHeight: 20 }}>
-          To access your services, please login to PinePe and complete your identity verification.
-        </Text>
-        
-        {/* Main Action: Link to PinePe */}
-        <TouchableOpacity 
-          style={{ backgroundColor: theme.colors.primary[500], width: '100%', padding: 16, borderRadius: 12, alignItems: 'center' }} 
-          onPress={() => Linking.openURL(generateLoginUrl(brandingDomain))}
-        >
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Login to {appName}</Text>
-        </TouchableOpacity>
-
-        {/* Secondary Action: Refresh Status */}
-        <TouchableOpacity 
-          style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, padding: 8 }} 
-          onPress={checkKycStatus}
-        >
-          <RefreshCcw size={14} color="#666" style={{ marginRight: 6 }} />
-          <Text style={{ color: '#666', fontSize: 14 }}>I've finished, Refresh status</Text>
-        </TouchableOpacity>
-
-        {/* Logout Section */}
-        <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: '#EEE', width: '100%', paddingTop: 16 }}>
-          <TouchableOpacity 
-            style={{ alignItems: 'center', padding: 8 }} 
-            onPress={handleLogout}
-          >
-            <Text style={{ color: '#FF3B30', fontWeight: '600', fontSize: 14 }}>Log out</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View style={styles.centered}>
+      <ActivityIndicator size="large" color={theme.colors.primary[500]} />
     </View>
   );
 }
+
+/* ❌ KYC NOT SUBMITTED → SHOW FORM */
+if (kycStatus === "NOT_SUBMITTED") {
+  return (
+    <KYCApplicationForm
+      
+    />
+  );
+}
+
+/* ⏳ PENDING → SHOW PENDING VIEW */
+if (kycStatus === "PENDING") {
+  return (
+    <View style={styles.centered}>
+      <ShieldAlert size={48} color={theme.colors.primary[500]} />
+      <Text style={{ fontSize: 18, fontWeight: "700", marginTop: 16 }}>
+        KYC Under Review
+      </Text>
+      <Text style={{ marginTop: 8, color: "#666" }}>
+        Your KYC is under verification.
+      </Text>
+
+      <TouchableOpacity
+        style={{ marginTop: 20 }}
+        onPress={checkKycStatus}
+      >
+        <RefreshCcw  size={16} color={theme.colors.primary[500]} />
+        <Text style={{ color: theme.colors.primary[500], marginTop: 6 }}>
+          Refresh Status
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+  
+
+
 
 
 

@@ -51,7 +51,12 @@ export const apiClient = async ({
 
   const json = await response.json();
 
-  
+  console.log("API Response:", {
+    endpoint,
+    method,
+    status: response.status,
+    data: json,
+  });
 
   if (!response.ok) {
    

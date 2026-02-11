@@ -162,20 +162,46 @@ export default function ProfileScreen() {
 
   /* ---------------- LOGOUT ---------------- */
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
+  Alert.alert("Logout", "Are you sure you want to logout?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Logout",
+      style: "destructive",
+      onPress: async () => {
+        try {
+          
+          const location = await getLatLong();
+          const token = await SecureStore.getItemAsync("userToken");
+
+          // Call API only if we have required data
+          if (location && token) {
+            try {
+              await logoutApi({
+                latitude: location.latitude,
+                longitude: location.longitude,
+                token,
+              });
+            } catch (apiErr) {
+              // Silent fail – we still logout locally
+              console.log("Logout API failed, proceeding locally");
+            }
+          }
+        } catch (err) {
+          console.log("Logout error:", err);
+        } finally {
+          // 🔐 FORCE LOGOUT LOCALLY (Always runs)
           await SecureStore.deleteItemAsync("userToken");
           await SecureStore.deleteItemAsync("userData");
+
           await signOut();
           router.replace("/(auth)/login");
-        },
+
+          
+        }
       },
-    ]);
-  };
+    },
+  ]);
+};
 
   /* ---------------- SEND OTP ---------------- */
   const handleResetMpin = async () => {
