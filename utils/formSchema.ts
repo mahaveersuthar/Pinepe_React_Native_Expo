@@ -24,10 +24,17 @@ export const kycSchema = z.object({
   address2: addressSchema,
   address3: addressSchema,
 
+  // bank details
+  bank_name: z.string().min(1, "Bank name required"),
+  account_no: z.string().min(1, "Account number required"),
+  ifsc_code: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC"),
+  account_holder_name: z.string().min(1, "Account holder name required"),
+
   // Documents
   aadhar_front: z.any().refine((f) => f?.uri, "Required"),
   aadhar_back: z.any().refine((f) => f?.uri, "Required"),
   pan_card: z.any().refine((f) => f?.uri, "Required"),
+  bank_document: z.any().refine((f) => f?.uri, "Required"),
 });
 
 export type KYCFormData = z.infer<typeof kycSchema>;

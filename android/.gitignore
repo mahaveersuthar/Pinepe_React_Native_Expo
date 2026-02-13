@@ -1,9 +1,7 @@
 # OSX
-#
 .DS_Store
 
 # Android/IntelliJ
-#
 build/
 .idea
 .gradle
@@ -12,5 +10,25 @@ local.properties
 *.hprof
 .cxx/
 
-# Bundle artifacts
+# Keystores - SECURITY CRITICAL
+*.keystore
+*.jks
+uat.keystore
+release.keystore
+debug.keystore
+keystore.properties
+signing.properties
+
+# APKs and build outputs
+*.apk
+*.aab
+*.ap_
+app/build/
+**/build/outputs/
+**/build/intermediates/
+
+# React Native
 *.jsbundle
+
+# Logs
+*.log

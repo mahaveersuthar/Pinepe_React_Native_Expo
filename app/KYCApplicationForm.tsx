@@ -39,7 +39,7 @@ import { KeyboardAvoidingView } from "react-native";
 import { businessTypes } from "@/utils/businessTypesData";
 
 type Props = {
-  onKycSubmitted?: () => void;
+    onKycSubmitted?: () => void;
 };
 
 const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
@@ -47,7 +47,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const states = Object.keys(city).sort();
 
-    
+
 
     const gstOptions = [
         { label: "Yes", value: "Yes" },
@@ -113,7 +113,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
     const onSubmit = async (data: KYCApplicationFormData) => {
         try {
             setLoading(true);
-           
+
 
             // 1️⃣ Get location
             const location = await getLatLong();
@@ -139,6 +139,8 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
                 throw new Error("User not authenticated");
             }
 
+            console.log("payload", data)
+
             // 4️⃣ Call API
             await submitKYCForm({
                 data,
@@ -146,7 +148,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
                 longitude: String(location.longitude),
                 token,
             });
-            
+
 
             // 5️⃣ Success toast
             Toast.show({
@@ -171,7 +173,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1, marginTop: 30 }}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -397,7 +399,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 };
 

@@ -441,6 +441,7 @@ export const city: CityData = {
     "Jaipur",
     "Jodhpur",
     "Bikaner",
+    "Banswara",
     "Udaipur",
     "Ajmer",
     "Bhilwara",

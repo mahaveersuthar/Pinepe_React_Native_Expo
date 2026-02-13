@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     height: 55, // Ensure consistent height
   },
 
-  statusCard: { width: "100%", backgroundColor: "#585a5eff", borderRadius: 24, padding: 32, alignItems: "center" },
+  statusCard: { width: "100%", backgroundColor: "#F8F8F8", borderRadius: 24, padding: 32, alignItems: "center" },
   iconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(79, 70, 229, 0.1)", justifyContent: "center", alignItems: "center", marginBottom: 24 },
   statusBadge: { marginTop: 30, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: "rgba(245, 158, 11, 0.1)", borderRadius: 100, flexDirection: "row", alignItems: "center" },
   statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#F59E0B", marginRight: 8 },

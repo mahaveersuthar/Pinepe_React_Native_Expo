@@ -1,5 +1,5 @@
 import { router, Tabs } from 'expo-router';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Alert ,ScrollView} from 'react-native';
 import { Home, User, Receipt, Grid, ShieldAlert, RefreshCcw } from 'lucide-react-native';
 import { theme } from '@/theme';
 import { useEffect, useState } from 'react';
@@ -14,9 +14,12 @@ import * as Application from 'expo-application';
 import { logoutApi } from '@/api/auth.api';
 import KYCApplicationForm from '../KYCApplicationForm';
 import { AnimatedCard } from '@/components/animated/AnimatedCard';
+import PaysprintTest from '../PaysprintETest';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 export default function TabLayout() {
-  type KycStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED";
+  type KycStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
 
   const [kycStatus, setKycStatus] = useState<KycStatus>("NOT_SUBMITTED");
   const [kycLoading, setKycLoading] = useState(true);
@@ -110,7 +113,7 @@ export default function TabLayout() {
         } else if (res.data?.kyc_status === "Pending") {
           setKycStatus("PENDING");
         } else {
-          setKycStatus("NOT_SUBMITTED");
+          setKycStatus("REJECTED");
         }
       }
     } catch (err) {
@@ -125,6 +128,10 @@ export default function TabLayout() {
   useEffect(() => {
     checkKycStatus();
   }, []);
+
+  // return(
+  //   <PaysprintTest/>
+  // )
 
 
   if (kycLoading) {
@@ -254,6 +261,82 @@ export default function TabLayout() {
 </AnimatedCard>
     );
   }
+
+
+
+if (kycStatus === "REJECTED") {
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8fafc",marginTop:16 }}>
+      <ScrollView
+        contentContainerStyle={{
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        
+       <View style={{paddingHorizontal:16}}>
+         <View
+          style={{
+            backgroundColor: "#fef2f2",
+            borderWidth: 1,
+            borderColor: "#fecaca",
+            borderRadius: 16,
+            padding: 20,
+            flexDirection: "row",
+            alignItems: "flex-start",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.05,
+            shadowRadius: 10,
+            elevation: 2,
+          }}
+        >
+          <View
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: "#ef4444",
+              marginTop: 6,
+              marginRight: 12,
+            }}
+          />
+
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                color: "#991b1b",
+                marginBottom: 4,
+              }}
+            >
+              KYC Rejected
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 14,
+                color: "#b91c1c",
+                lineHeight: 20,
+              }}
+            >
+              Your previous application was not approved. Please review your
+              details and re-submit the form below with clear documents.
+            </Text>
+          </View>
+        </View>
+       </View>
+
+       
+          <KYCApplicationForm onKycSubmitted={checkKycStatus} />
+        
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+
 
 
 

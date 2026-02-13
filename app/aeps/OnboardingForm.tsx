@@ -18,15 +18,16 @@ import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
 import { useBranding } from '@/context/BrandingContext';
 import Toast from "react-native-toast-message";
-import { 
-  User, 
-  MapPin, 
-  FileText, 
-  Calendar, 
-  UploadCloud, 
-  CheckCircle2, 
+import {
+  User,
+  MapPin,
+  FileText,
+  Calendar,
+  UploadCloud,
+  CheckCircle2,
   Copy,
-  Check
+  Check,
+  Briefcase
 } from 'lucide-react-native';
 
 // Local Imports
@@ -51,7 +52,7 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
     mode: 'onTouched',
   });
 
-   
+
 
   const states = Object.keys(city).sort();
 
@@ -63,6 +64,7 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
   const aadharFront = watch("aadhar_front");
   const aadharBack = watch("aadhar_back");
   const panCard = watch("pan_card");
+  const bankDocument = watch("bank_document")
 
   const copyPrimaryAddress = (targetPath: "address2" | "address3") => {
     const primary = watch("address1");
@@ -88,7 +90,7 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
 
       if (!result.canceled) {
         const asset = result.assets[0];
-        
+
         const fileObj = {
           uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
           type: asset.mimeType || 'image/jpeg',
@@ -108,15 +110,28 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
     }
   };
 
+  const showValidationErrors = (errors: Record<string, string[]>) => {
+    const message = Object.values(errors)
+      .flat()
+      .join("\n");
+
+    Toast.show({
+      type: "error",
+      text1: "Validation Error",
+      text2: message,
+    });
+  };
+
+
   const onSubmit = async (data: KYCFormData) => {
     try {
       setLoading(true);
-      
+
       const location = await getLatLong();
       const token = await SecureStore.getItemAsync("userToken");
       const userRaw = await SecureStore.getItemAsync("userData");
-      const userId = userRaw ? JSON.parse(userRaw).id : "70"; 
-      
+      const userId = userRaw ? JSON.parse(userRaw).id : "70";
+
 
       const formData = new FormData();
 
@@ -152,49 +167,85 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
       formData.append("aadhaar_doc", data.aadhar_front as any);
       formData.append("aadhaar_back_doc", data.aadhar_back as any);
       formData.append("pan_doc", data.pan_card as any);
+      formData.append("bank_document", data.bank_document as any)
+
+      // bank 
+      formData.append("bank_name", data.bank_name as any);
+      formData.append("bank_account_holder_name", data.account_holder_name as any);
+      formData.append("bank_account_number", data.account_no as any);
+      formData.append("bank_ifsc_code", data.ifsc_code as any);
+
+
+
+
+      console.log("formData", formData)
 
       const res = await apiClient({
         endpoint: "/bankit/kyc/submit",
         method: "POST",
         body: formData,
         headers: {
-          
+
           latitude: String(location?.latitude || "0.0"),
           longitude: String(location?.longitude || "0.0"),
           Authorization: `Bearer ${token}`,
         },
       });
 
+
+
       if (res.success) {
-        Toast.show({ 
-          type: "success", 
-          text1: "Success", 
-          text2: "KYC submitted successfully" 
+        Toast.show({
+          type: "success",
+          text1: "Success",
+          text2: "KYC submitted successfully"
         });
-        
+
         // Trigger parent status re-fetch
         if (onSubmissionSuccess) {
           onSubmissionSuccess();
         }
       } else {
         // Specific check for duplicate entry error to guide the user
-        const msg = res.message?.includes("Duplicate entry") 
-          ? "KYC already submitted for this account." 
+        const msg = res.message?.includes("Duplicate entry")
+          ? "KYC already submitted for this account."
           : res.message;
 
-        Toast.show({ 
-          type: "error", 
-          text1: "Submission Failed", 
-          text2: msg || "Unknown error" 
+        Toast.show({
+          type: "error",
+          text1: "Submission Failed",
+          text2: msg || "Unknown error"
         });
       }
     } catch (error: any) {
-      Toast.show({ 
-        type: "error", 
-        text1: "Upload Failed", 
-        text2: "Network error or file size too large."
+      console.log("=err==", error);
+
+      // Axios-style error
+      const response = error?.response || error;
+
+      if (response?.status === 422 && response?.data?.errors) {
+        showValidationErrors(response.data.errors);
+        return;
+      }
+
+      // Duplicate / business logic error
+      if (response?.data?.message?.includes("Duplicate entry")) {
+        Toast.show({
+          type: "error",
+          text1: "Already Submitted",
+          text2: "KYC already submitted for this account.",
+        });
+        return;
+      }
+
+      // Fallback
+      Toast.show({
+        type: "error",
+        text1: "Upload Failed",
+        text2: "Something went wrong. Please try again.",
       });
-    } finally {
+    }
+    finally {
       setLoading(false);
     }
   };
@@ -258,7 +309,7 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
         </View>
         <FormInput name="email" label="Email" keyboardType="email-address" control={control} error={errors.email} />
         <FormInput name="mobile" label="Mobile" keyboardType="phone-pad" maxLength={10} control={control} error={errors.mobile} />
-        
+
         <View style={styles.row}>
           <View style={{ flex: 1, marginRight: 5 }}>
             <Text style={styles.label}>DOB</Text>
@@ -287,7 +338,7 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
             mode="date"
             display="default"
             maximumDate={new Date()}
-            onChange={(e, d) => { setShowDatePicker(false); if(d) setValue("dob", d.toISOString().split('T')[0])}}
+            onChange={(e, d) => { setShowDatePicker(false); if (d) setValue("dob", d.toISOString().split('T')[0]) }}
           />
         )}
 
@@ -305,10 +356,22 @@ const KYCForm = ({ onSubmissionSuccess }: OnboardingFormProps) => {
       </View>
 
       <View style={styles.section}>
+        <View style={styles.sectionTitleRow}><Briefcase size={18} color="#333" /><Text style={styles.sectionHeader}>Bank Documents</Text></View>
+        <FormInput name="bank_name" label="Bank Name" control={control} error={errors.bank_name} />
+
+        <FormInput name="account_holder_name" label="Account Holder Name" control={control} error={errors.account_holder_name} />
+
+        <FormInput name="account_no" label="Account Number" keyboardType="phone-pad" control={control} error={errors.account_no} />
+
+        <FormInput name="ifsc_code" label="IFSC Code"  maxLength={11} control={control} error={errors.ifsc_code} />
+      </View>
+
+      <View style={styles.section}>
         <View style={styles.sectionTitleRow}><FileText size={18} color="#333" /><Text style={styles.sectionHeader}>Documents</Text></View>
         <UploadBtn label="Aadhaar Front" fileData={aadharFront} onPress={() => handleUpload('aadhar_front', 'Aadhaar Front')} error={errors.aadhar_front} />
         <UploadBtn label="Aadhaar Back" fileData={aadharBack} onPress={() => handleUpload('aadhar_back', 'Aadhaar Back')} error={errors.aadhar_back} />
         <UploadBtn label="PAN Card" fileData={panCard} onPress={() => handleUpload('pan_card', 'PAN Card')} error={errors.pan_card} />
+        <UploadBtn label="Bank Document (Cheque / Passbook)" fileData={bankDocument} onPress={() => handleUpload('bank_document', 'Bank Document (Cheque / Passbook)')} error={errors.bank_document} />
       </View>
 
       <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={handleSubmit(onSubmit)} disabled={loading}>

@@ -17,6 +17,8 @@ import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 import `in`.pinepe.pinepe.aeps.AepsPackage
 import `in`.pinepe.pinepe.mantra.MantraPackage
+import `in`.pinepe.pinepe.paysprint.PaysprintPackage
+
 
 class MainApplication : Application(), ReactApplication {
 
@@ -29,6 +31,7 @@ class MainApplication : Application(), ReactApplication {
               // add(MyReactNativePackage())
               add(AepsPackage())
               add(MantraPackage())
+              add(PaysprintPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

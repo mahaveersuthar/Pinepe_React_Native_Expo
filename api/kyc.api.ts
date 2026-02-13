@@ -24,50 +24,52 @@ export const submitKYCForm = async (options: {
   longitude: string;
   token: string;
 }) => {
+  const { data } = options;
   const formData = new FormData();
 
-  console.log("Submitting KYC with data:", options.data);
+  /* ---------- REQUIRED FILES ---------- */
+  formData.append("passport_size_photo", data.passport_size_photo);
+  formData.append("aadhar_front_image", data.aadhar_front);
+  formData.append("aadhar_back_image", data.aadhar_back);
+  formData.append("pancard_image", data.pan_card);
 
-  /* ---------- FILES ---------- */
-  formData.append("passport_size_photo", options.data.passport_size_photo);
-  formData.append("aadhar_front_image", options.data.aadhar_front);
-  formData.append("aadhar_back_image", options.data.aadhar_back);
-  formData.append("pancard_image", options.data.pan_card);
+  /* ---------- REQUIRED TEXT ---------- */
+  formData.append("first_name", data.first_name);
+  formData.append("last_name", data.last_name);
+  formData.append("email", data.email);
+  formData.append("phone", data.mobile);
+  formData.append("gst", data.is_GST_registered);
+  formData.append("aadhar_number", data.aadhar_no.replace(/\D/g, ""));
+  formData.append("pancard_number", data.pan_no.toUpperCase());
 
-  /* ---------- TEXT FIELDS ---------- */
-  formData.append("first_name", options.data.first_name);
-  formData.append("last_name", options.data.last_name);
-  formData.append("email", options.data.email);
-  formData.append("phone", options.data.mobile);
-  formData.append("date_of_birth", options.data.dob);
-  formData.append("aadhar_number", options.data.aadhar_no);
-  formData.append("pancard_number", options.data.pan_no);
-
-  formData.append("business_name", options.data.business_name);
-  formData.append("business_type", options.data.business_type);
-  formData.append("gst", options.data.is_GST_registered);
-
-  if (options.data.is_GST_registered === "Yes") {
-    formData.append("gst_number", options.data.GST_number);
-  }
+  /* ---------- OPTIONAL TEXT ---------- */
+  formData.append("business_name", data.business_name || "");
+  formData.append("date_of_birth", data.dob || "");
+  formData.append("business_type", data.business_type || "");
 
   formData.append(
     "permanent_address",
-    options.data.address.permanent_address
+    data.address?.permanent_address || ""
   );
-  formData.append("state", options.data.address.state);
-  formData.append("city", options.data.address.city);
-  formData.append("pin_code", options.data.address.pincode);
+  formData.append("city", data.address?.city || "");
+  formData.append("state", data.address?.state || "");
+  formData.append("pin_code", data.address?.pincode || "");
+
+  if (data.is_GST_registered === "Yes") {
+    formData.append("gst_number", data.GST_number || "");
+  }
+
+  /* ---------- LOCATION (SAFE EVEN IF BACKEND IGNORES) ---------- */
+  formData.append("latitude", options.latitude);
+  formData.append("longitude", options.longitude);
 
   return apiClient({
     endpoint: "/kyc/submit",
     method: "POST",
     body: formData,
     headers: {
-      latitude: options.latitude,
-      longitude: options.longitude,
       Authorization: `Bearer ${options.token}`,
-      
+      "Content-Type": "multipart/form-data",
     },
   });
 };

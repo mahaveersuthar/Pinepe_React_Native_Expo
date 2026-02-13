@@ -50,6 +50,7 @@ export const apiClient = async ({
  
 
   const json = await response.json();
+  console.log("json",json)
 
   console.log("API Response:", {
     endpoint,
