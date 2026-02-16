@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+import { useTheme } from '@/context/ThemeProvider';
+import { AppTheme } from '@/theme/theme';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Pressable, ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -6,7 +8,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { theme } from '@/theme';
+
 
 interface AnimatedCardProps {
   children: React.ReactNode;
@@ -16,6 +18,8 @@ interface AnimatedCardProps {
 }
 
 export function AnimatedCard({ children, onPress, style, delay = 0 }: AnimatedCardProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const scale = useSharedValue(0.9);
   const opacity = useSharedValue(0);
 
@@ -56,9 +60,9 @@ export function AnimatedCard({ children, onPress, style, delay = 0 }: AnimatedCa
   return content;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme:AppTheme) => StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.background.light,
+    backgroundColor: "white",
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing[4],
     ...theme.shadows.md,

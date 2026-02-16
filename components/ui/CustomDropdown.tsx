@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,0,0,0.1)",
     borderRadius: 14,
     elevation: 5,
-  },
+  },			
 });
 
 export default CustomDropdown

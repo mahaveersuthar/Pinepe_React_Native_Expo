@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TextInput, StyleSheet, View, Text, TextInputProps } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { theme } from '@/theme';
+import { useTheme } from '@/context/ThemeProvider';
 
 interface AnimatedInputProps extends TextInputProps {
   label?: string;
@@ -13,6 +13,8 @@ interface AnimatedInputProps extends TextInputProps {
 }
 
 export function AnimatedInput({ label, error, style, ...props }: AnimatedInputProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [isFocused, setIsFocused] = useState(false);
   const borderColor = useSharedValue(theme.colors.border.medium);
   const labelScale = useSharedValue(1);
@@ -47,7 +49,7 @@ export function AnimatedInput({ label, error, style, ...props }: AnimatedInputPr
   return (
     <View style={styles.container}>
       {label && (
-        <Animated.View  pointerEvents="none" style={[styles.labelContainer, animatedLabelStyle]}>
+        <Animated.View pointerEvents="none" style={[styles.labelContainer, animatedLabelStyle]}>
           <Text style={[styles.label, (isFocused || props.value) && styles.labelFocused]}>
             {label}
           </Text>
@@ -67,7 +69,7 @@ export function AnimatedInput({ label, error, style, ...props }: AnimatedInputPr
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     marginBottom: theme.spacing[4],
   },
@@ -75,7 +77,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: theme.spacing[4],
     top: theme.spacing[3],
-    backgroundColor: theme.colors.background.light,
+    backgroundColor: theme.colors.background.main,
     paddingHorizontal: theme.spacing[1],
     zIndex: 1,
   },

@@ -4,6 +4,8 @@ import Toast from 'react-native-toast-message';
 import { AuthProvider } from "@/context/AuthContext";
 import { useFrameworkReady } from "@/hooks/useFrameworkReady";
 import { BrandingProvider } from '@/context/BrandingContext';
+import { ThemeProvider } from "@/context/ThemeProvider";
+
 
 // This helps the APK know where to start
 export const unstable_settings = {
@@ -15,6 +17,7 @@ export default function RootLayout() {
   useFrameworkReady();
 
   return (
+    <ThemeProvider>
     <BrandingProvider>
       <AuthProvider>
         <Stack screenOptions={{ headerShown: false }}>
@@ -28,5 +31,6 @@ export default function RootLayout() {
         <Toast /> 
       </AuthProvider>
     </BrandingProvider>
+    </ThemeProvider>
   );
 }

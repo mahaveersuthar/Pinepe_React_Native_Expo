@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,14 +13,16 @@ import { ArrowLeft } from 'lucide-react-native';
 import Toast from 'react-native-toast-message'; // 1. Import Toast
 import Constants from 'expo-constants';
 import { useBranding } from '@/context/BrandingContext';
-import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
 import { forgotPasswordApi } from '../../api/auth.api';
 import { getLatLong } from '@/utils/location';
+import { useTheme } from '@/context/ThemeProvider';
 
 export default function ForgotPasswordScreen() {
+   const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
@@ -90,7 +92,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background.main }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -104,7 +106,7 @@ export default function ForgotPasswordScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <BrandedLogo size={140} style={styles.logo} />
+          <BrandedLogo size={200} style={styles.logo} />
 
           <View style={styles.header}>
             <Text style={styles.title}>Forgot Password?</Text>
@@ -140,10 +142,10 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) =>StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.light,
+    backgroundColor: theme.colors.background.main,
   },
   scrollContent: {
     flexGrow: 1,

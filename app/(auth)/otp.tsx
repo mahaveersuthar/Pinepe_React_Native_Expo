@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import Animated, {
 import { ArrowLeft } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import Toast from 'react-native-toast-message'; // Import Toast
-import { theme } from '@/theme';
+import { useTheme } from '@/context/ThemeProvider';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { getLatLong } from '@/utils/location';
 import { verifyOtpApi } from '../../api/auth.api';
@@ -32,6 +32,8 @@ const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 const OTP_LENGTH = 4;
 
 export default function OTPScreen() {
+   const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const { otp_sent_to, from } = useLocalSearchParams<{
     otp_sent_to: string;
@@ -283,10 +285,11 @@ export default function OTPScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const createStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.light,
+    backgroundColor: theme.colors.background.main,
   },
   scrollContent: {
     flexGrow: 1,
@@ -336,11 +339,11 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.bold,
     textAlign: 'center',
     color: theme.colors.text.primary,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.main,
   },
   otpInputFilled: {
     borderColor: theme.colors.primary[500],
-    backgroundColor: theme.colors.primary[50],
+    backgroundColor: theme.colors.background.main,
   },
   timerContainer: {
     alignItems: 'center',

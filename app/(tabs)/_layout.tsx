@@ -28,16 +28,7 @@ export default function TabLayout() {
   const domainName = brandingDomain!;
 
 
-  const generateLoginUrl = (domain?: string | null): string => {
-    if (!domain) return "";
-
-    // Remove protocol if accidentally passed
-    const cleanDomain = domain
-      .replace(/^https?:\/\//, "")
-      .replace(/\/$/, "");
-
-    return `https://${cleanDomain}/login`;
-  };
+ 
 
 
   const { signOut, hasMPIN } = useAuth();
@@ -129,9 +120,9 @@ export default function TabLayout() {
     checkKycStatus();
   }, []);
 
-  return(
-    <PaysprintTest/>
-  )
+  // return(
+  //   <PaysprintTest/>
+  // )
 
 
   if (kycLoading) {
@@ -335,13 +326,6 @@ if (kycStatus === "REJECTED") {
     </SafeAreaView>
   );
 }
-
-
-
-
-
-
-
 
 
   return (

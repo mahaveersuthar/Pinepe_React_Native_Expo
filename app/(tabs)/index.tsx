@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, TouchableOpacity, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Wallet, ArrowUpRight, ArrowDownLeft, Zap,
   Clock, XCircle, User, Plus
 } from 'lucide-react-native';
-import { theme } from '@/theme';
+
 import { useAuth } from '@/context/AuthContext';
 import { AnimatedCard } from '@/components/animated/AnimatedCard';
 import { getLatLong } from '@/utils/location';
@@ -21,11 +21,12 @@ import { getProfileApi } from '../../api/profile.api';
 import { getWalletBalanceApi } from '../../api/balance.api';
 import { ServiceItem } from './services';
 import { VALID_ROUTES } from '@/utils/routes';
+import { useTheme } from '@/context/ThemeProvider';
 
 const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient);
 
 
-const TransactionSkeleton = () => (
+const TransactionSkeleton = ({ styles }: { styles: any }) => (
   <View style={styles.transactionCard}>
     <View style={styles.cardRow}>
       <ShimmerPlaceholder style={styles.shimmerIcon} />
@@ -41,10 +42,12 @@ const EmptyState = ({
   icon,
   title,
   subtitle,
+  styles
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle?: string;
+  styles:any
 }) => (
   <View style={styles.emptyState}>
     {icon}
@@ -54,6 +57,8 @@ const EmptyState = ({
 );
 
 export default function HomeScreen() {
+  const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
   const [balance, setBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -334,6 +339,7 @@ export default function HomeScreen() {
               icon={<Zap size={36} color={theme.colors.text.tertiary} />}
               title="No services available"
               subtitle="Please check back later"
+              styles={styles}
             />
           ) : services.map((service, index) => (
 
@@ -382,15 +388,18 @@ export default function HomeScreen() {
         {/* LOADING STATE */}
         {transactionsLoading ? (
           <>
-            <TransactionSkeleton />
-            <TransactionSkeleton />
-            <TransactionSkeleton />
+            <TransactionSkeleton styles={styles} />
+            <TransactionSkeleton styles={styles} />
+            <TransactionSkeleton styles={styles} />
+            <TransactionSkeleton styles={styles} />
+          
           </>
         ) : transactions.length === 0 ? (
           <EmptyState
             icon={<Clock size={36} color={theme.colors.text.tertiary} />}
             title="No transactions yet"
             subtitle="Your recent transactions will appear here"
+            styles={styles}
           />
         ) : (
           transactions.map((item, index) => {
@@ -439,15 +448,15 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background.dark },
+const createStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background.main },
   header: { paddingTop: theme.spacing[12], paddingHorizontal: theme.spacing[6], paddingBottom: theme.spacing[8] },
   headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing[6] },
   greeting: { fontSize: theme.typography.fontSizes.md, color: theme.colors.text.inverse, opacity: 0.9 },
   userName: { fontSize: theme.typography.fontSizes['2xl'], fontWeight: theme.typography.fontWeights.bold, color: theme.colors.text.inverse, marginTop: theme.spacing[1] },
   profileImage: { width: 48, height: 48, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.text.inverse, justifyContent: 'center', alignItems: 'center' },
   profileInitial: { fontSize: theme.typography.fontSizes.xl, fontWeight: theme.typography.fontWeights.bold, color: theme.colors.primary[500] },
-  balanceCard: { backgroundColor: theme.colors.background.light },
+  balanceCard: { backgroundColor: theme.colors.background.main },
   balanceHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing[2] },
   balanceIconContainer: { width: 32, height: 32, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.primary[50], justifyContent: 'center', alignItems: 'center', marginRight: theme.spacing[2] },
   balanceLabel: { fontSize: theme.typography.fontSizes.sm, color: theme.colors.text.secondary },

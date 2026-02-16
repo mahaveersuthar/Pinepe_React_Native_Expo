@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,12 @@ import { Eye, EyeOff, ChevronDown } from 'lucide-react-native';
 import Toast from 'react-native-toast-message'; // 1. Import Toast
 import Constants from 'expo-constants';
 import { useBranding } from '@/context/BrandingContext';
-import { theme } from '@/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
 import { registerApi } from '../../api/auth.api';
 import { getLatLong } from '@/utils/location';
+import { useTheme } from '@/context/ThemeProvider';
 
 const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 
@@ -31,7 +31,18 @@ const ROLES = [
 ];
 
 export default function SignupScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
+
+  const [errors, setErrors] = useState<{
+    role?: string;
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    password?: string;
+    passwordConfirmation?: string;
+  }>({});
 
   // Form State
   const [role, setRole] = useState('');
@@ -48,8 +59,8 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
 
   // Domain configuration
-   
-  
+
+
 
   const addIndiaCountryCode = (phone: string): string => {
     if (!phone) return "";
@@ -74,123 +85,125 @@ export default function SignupScreen() {
 
 
   const handleSignup = async () => {
-  if (!role || !fullName || !email || !phone || !password || !passwordConfirmation) {
-    Toast.show({
-      type: "error",
-      text1: "Required Fields",
-      text2: "Please fill all details to continue",
-    });
-    return;
-  }
+    const newErrors: typeof errors = {};
+    if (!role) newErrors.role = "Please select user type";
+    if (!fullName) newErrors.fullName = "Full name is required";
+    if (!email) newErrors.email = "Email is required";
+    if (!password) newErrors.password = "Password is required";
+    if (!passwordConfirmation)
+      newErrors.passwordConfirmation = "Confirm password is required";
 
-  if (password !== passwordConfirmation) {
-    Toast.show({
-      type: "error",
-      text1: "Password Mismatch",
-      text2: "Confirm password does not match",
-    });
-    return;
-  }
+    if (
+      password &&
+      passwordConfirmation &&
+      password !== passwordConfirmation
+    ) {
+      newErrors.passwordConfirmation = "Passwords do not match";
+    }
 
-  if (phone.length < 10) {
-    Toast.show({
-      type: "error",
-      text1: "Invalid Phone",
-      text2: "Please enter a valid 10-digit number",
-    });
-    return;
-  }
+    if (!phone) {
+      newErrors.phone = "Phone number is required";
+    } else if (!/^\d{10}$/.test(phone)) {
+      newErrors.phone = "Enter a valid 10-digit phone number";
+    }
 
-  setLoading(true);
-
-  try {
-    // 📍 Get location
-    const location = await getLatLong();
-
-    // ❌ Block signup if location missing
-    if (!location) {
-      Toast.show({
-        type: "error",
-        text1: "Location Required",
-        text2: "Please enable location permission to continue",
-      });
-      setLoading(false); // Don't forget this!
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-   
-    const formattedPhone = addIndiaCountryCode(phone);
+    setErrors({}); // clear previous errors
 
-    const payload = {
-      name: fullName,
-      email: email,
-      phone: formattedPhone,
-      role: role,
-      password: password,
-      password_confirmation: passwordConfirmation,
-    };
+    setLoading(true);
 
-    const json = await registerApi(
-      {
+    try {
+      // 📍 Get location
+      const location = await getLatLong();
+
+      // ❌ Block signup if location missing
+      if (!location) {
+        Toast.show({
+          type: "error",
+          text1: "Location Required",
+          text2: "Please enable location permission to continue",
+        });
+        setLoading(false); // Don't forget this!
+        return;
+      }
+
+
+      const formattedPhone = addIndiaCountryCode(phone);
+
+      const payload = {
         name: fullName,
         email: email,
         phone: formattedPhone,
         role: role,
         password: password,
         password_confirmation: passwordConfirmation,
-      },
-      {
-        
-        latitude: location.latitude,
-        longitude: location.longitude,
+      };
+
+      const json = await registerApi(
+        {
+          name: fullName,
+          email: email,
+          phone: formattedPhone,
+          role: role,
+          password: password,
+          password_confirmation: passwordConfirmation,
+        },
+        {
+
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }
+      );
+
+
+
+
+
+
+
+
+      Toast.show({
+        type: "success",
+        text1: "Account Created",
+        text2: "Please verify your email to continue",
+      });
+
+      router.replace({
+        pathname: "/(auth)/otp",
+        params: {
+          otp_sent_to: email,
+          from: "signup",
+        },
+      });
+
+    } catch (err: any) {
+
+
+      const errors = err?.response?.data?.errors;
+      let errorMessage = "Something went wrong. Please try again.";
+
+      if (errors) {
+        // Take first validation error message
+        const firstKey = Object.keys(errors)[0];
+        errorMessage = errors[firstKey][0];
+
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
       }
-    );
 
-    
-    
-
-   
-
-
-
-    Toast.show({
-      type: "success",
-      text1: "Account Created",
-      text2: "Please verify your email to continue",
-    });
-
-    router.replace({
-      pathname: "/(auth)/otp",
-      params: {
-        otp_sent_to: email,
-        from: "signup",
-      },
-    });
-
-  } catch (err: any) {
-   
-
-    const errors = err?.response?.data?.errors;
-    let errorMessage = "Something went wrong. Please try again.";
-
-    if (errors) {
-      // Take first validation error message
-      const firstKey = Object.keys(errors)[0];
-      errorMessage = errors[firstKey][0];
-   
-    } else if (err?.response?.data?.message) {
-      errorMessage = err.response.data.message;
+      Toast.show({
+        type: "error",
+        text1: "Signup Failed",
+        text2: errorMessage,
+      });
+    } finally {
+      setLoading(false);
     }
-
-    Toast.show({
-      type: "error",
-      text1: "Signup Failed",
-      text2: errorMessage,
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <View style={styles.mainWrapper}>
@@ -207,7 +220,7 @@ export default function SignupScreen() {
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          <BrandedLogo size={120} style={styles.logo} />
+          <BrandedLogo size={200} style={styles.logo} />
 
           <View style={styles.header}>
             <Text style={styles.title}>Create an account</Text>
@@ -248,32 +261,59 @@ export default function SignupScreen() {
             <AnimatedInput
               label="Full Name"
               value={fullName}
-              onChangeText={setFullName}
+              onChangeText={(text) => {
+                setFullName(text);
+                setErrors((e) => ({ ...e, fullName: undefined }));
+              }}
+              error={errors.fullName}
             />
 
             <AnimatedInput
               label="Email Address"
               value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
+              onChangeText={(text) => {
+                setEmail(text);
+                setErrors((e) => ({ ...e, email: undefined }));
+              }}
+              error={errors.email}
             />
 
             <AnimatedInput
               label="Phone Number"
               value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
+              keyboardType="number-pad"
               maxLength={10}
+              onChangeText={(text) => {
+                const cleaned = text.replace(/\D/g, "");
+                setPhone(cleaned);
+
+                setErrors((e) => ({
+                  ...e,
+                  phone:
+                    cleaned.length === 0
+                      ? "Phone number is required"
+                      : cleaned.length < 10
+                        ? "Enter a valid 10-digit phone number"
+                        : undefined,
+                }));
+              }}
+              error={errors.phone}
             />
+
+
 
             <View style={styles.inputWrapper}>
               <AnimatedInput
                 label="Password"
                 value={password}
-                onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setErrors((e) => ({ ...e, password: undefined }));
+                }}
+                error={errors.password}
               />
+
               <Pressable style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
                 {showPassword ? <EyeOff size={20} color={theme.colors.text.secondary} /> : <Eye size={20} color={theme.colors.text.secondary} />}
               </Pressable>
@@ -283,9 +323,21 @@ export default function SignupScreen() {
               <AnimatedInput
                 label="Confirm Password"
                 value={passwordConfirmation}
-                onChangeText={setPasswordConfirmation}
                 secureTextEntry={!showConfirmPassword}
+                onChangeText={(text) => {
+                  setPasswordConfirmation(text);
+
+                  setErrors((e) => ({
+                    ...e,
+                    passwordConfirmation:
+                      password && text && text !== password
+                        ? "Passwords do not match"
+                        : undefined,
+                  }));
+                }}
+                error={errors.passwordConfirmation}
               />
+
               <Pressable style={styles.eyeIcon} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
                 {showConfirmPassword ? <EyeOff size={20} color={theme.colors.text.secondary} /> : <Eye size={20} color={theme.colors.text.secondary} />}
               </Pressable>
@@ -313,10 +365,10 @@ export default function SignupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   mainWrapper: {
     flex: 1,
-    backgroundColor: theme.colors.background.light,
+    backgroundColor: theme.colors.background.main,
   },
   scrollContent: {
     flexGrow: 1,
@@ -359,18 +411,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border.medium,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.surface, // ✅
   },
+
   dropdownActive: {
     borderColor: theme.colors.primary[500],
     borderWidth: 2,
   },
+
   dropdownText: {
     fontSize: 16,
     color: theme.colors.text.primary
   },
   dropdownMenu: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.surface, // ✅
     borderWidth: 1,
     borderColor: theme.colors.border.medium,
     borderRadius: 12,
@@ -381,17 +435,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     overflow: 'hidden',
-    zIndex: 1000
+    zIndex: 1000,
   },
+
   dropdownItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light
+    borderBottomColor: theme.colors.border.light,
   },
+
   dropdownItemText: {
     fontSize: 16,
-    color: theme.colors.text.primary
+    color: theme.colors.text.primary,
   },
+
   inputWrapper: {
     position: 'relative',
     marginBottom: 4

@@ -37,16 +37,16 @@ export const theme = {
       darker: colors.background?.darker || '#F0F2F5',
     },
 
-    // Usage-based Text
-    text: {
-      primary: colors.text?.primary || '#1A1A1A',
-      secondary: colors.text?.secondary || '#666666',
-      tertiary: colors.text?.tertiary || '#999999',
-      inverse: '#FFFFFF',
-      error: colors.error?.[500] || '#EF4444',
-      success: colors.success?.[500] || '#10B981',
-      link: colors.primary[500] || '#6366F1',
-    },
+    // // Usage-based Text
+    // text: {
+    //   primary: colors.text?.primary || '#1A1A1A',
+    //   secondary: colors.text?.secondary || '#666666',
+    //   tertiary: colors.text?.tertiary || '#999999',
+    //   inverse: '#FFFFFF',
+    //   error: colors.error?.[500] || '#EF4444',
+    //   success: colors.success?.[500] || '#10B981',
+    //   link: colors.primary[500] || '#6366F1',
+    // },
 
     // Semantic Status Logic
     status: statusColors,

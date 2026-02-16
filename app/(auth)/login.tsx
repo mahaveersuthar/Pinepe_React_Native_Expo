@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,8 @@ import { Eye, EyeOff } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 import Constants from 'expo-constants';
 import { useBranding } from '@/context/BrandingContext';
-import { theme } from '@/theme';
+import { ThemeContextType, useTheme } from '@/context/ThemeProvider';
+import { AppTheme, LightTheme } from '@/theme/theme';
 import { AnimatedInput } from '@/components/animated/AnimatedInput';
 import { AnimatedButton } from '@/components/animated/AnimatedButton';
 import { BrandedLogo } from '@/components/ui/BrandLogo';
@@ -24,9 +25,10 @@ import { getLatLong } from '@/utils/location';
 
 
 
-
 export default function LoginScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   // Form State
   const [identifier, setIdentifier] = useState('');
@@ -188,81 +190,84 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  outerContainer: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.light,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing[6],
-    paddingBottom: theme.spacing[8],
-  },
-  logo: {
-    marginBottom: 5,
-    alignSelf: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: theme.spacing[8],
-  },
-  title: {
-    fontSize: theme.typography.fontSizes['4xl'],
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
-  },
-  subtitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    color: theme.colors.text.secondary,
-  },
-  form: {
-    width: '100%',
-  },
-  passwordContainer: {
-    position: 'relative',
-  },
-  passwordInput: {
-    paddingRight: theme.spacing[12],
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: theme.spacing[4],
-    top: 18,
-  },
-  errorText: {
-    color: theme.colors.error[500],
-    fontSize: theme.typography.fontSizes.sm,
-    marginBottom: theme.spacing[4],
-  },
-  forgotPassword: {
-    fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.primary[500],
-    fontWeight: theme.typography.fontWeights.semibold,
-    textAlign: 'right',
-    marginBottom: theme.spacing[8],
-  },
-  loginButton: {
-    width: '100%',
-    marginBottom: theme.spacing[6],
-  },
-  signupContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  signupText: {
-    fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.text.secondary,
-  },
-  signupLink: {
-    fontSize: theme.typography.fontSizes.md,
-    color: theme.colors.primary[500],
-    fontWeight: theme.typography.fontWeights.semibold,
-  },
-});
+
+const createStyles = (theme:AppTheme) =>
+  StyleSheet.create({
+    outerContainer: {
+      flex: 1,
+      backgroundColor: theme.colors.background.main,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background.main,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing[6],
+      paddingBottom: theme.spacing[8],
+      
+    },
+    logo: {
+      marginBottom: 5,
+      alignSelf: 'center',
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: theme.spacing[8],
+    },
+    title: {
+      fontSize: theme.typography.fontSizes['4xl'],
+      fontWeight: theme.typography.fontWeights.bold,
+      color: theme.colors.text.primary,
+      marginBottom: theme.spacing[2],
+    },
+    subtitle: {
+      fontSize: theme.typography.fontSizes.lg,
+      color: theme.colors.text.secondary,
+    },
+    form: {
+      width: '100%',
+    },
+    passwordContainer: {
+      position: 'relative',
+    },
+    passwordInput: {
+      paddingRight: theme.spacing[12],
+    },
+    eyeIcon: {
+      position: 'absolute',
+      right: theme.spacing[4],
+      top: 18,
+    },
+    errorText: {
+      color: theme.colors.text.error,
+      fontSize: theme.typography.fontSizes.sm,
+      marginBottom: theme.spacing[4],
+    },
+    forgotPassword: {
+      fontSize: theme.typography.fontSizes.md,
+      color: theme.colors.primary[500],
+      fontWeight: theme.typography.fontWeights.semibold,
+      textAlign: 'right',
+      marginBottom: theme.spacing[8],
+    },
+    loginButton: {
+      width: '100%',
+      marginBottom: theme.spacing[6],
+    },
+    signupContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    signupText: {
+      fontSize: theme.typography.fontSizes.md,
+      color: theme.colors.text.secondary,
+    },
+    signupLink: {
+      fontSize: theme.typography.fontSizes.md,
+      color: theme.colors.primary[500],
+      fontWeight: theme.typography.fontWeights.semibold,
+    },
+  });
