@@ -31,7 +31,6 @@ import {
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import CustomDropdown from "@/components/ui/CustomDropdown";
 import { city } from "@/utils/data";
 import { getLatLong } from "@/utils/location";
 import { submitKYCForm } from "@/api/kyc.api";
