@@ -92,38 +92,40 @@ android {
         applicationId 'in.pinepe.pinepe'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.2"
         multiDexEnabled true
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
 
      flavorDimensions "default"
-        productFlavors {
+       productFlavors {
 
     pinepe {
         dimension "default"
         applicationIdSuffix ".pinepe"
-        
+        versionName "1.0.8"
+        versionCode 108
     }
 
     cashpe {
         dimension "default"
         applicationIdSuffix ".cashpe"
-        
+        versionName "1.0.7"
+        versionCode 107
     }
 
-    laxmeepay {
-        dimension "default"
-        applicationIdSuffix ".laxmeepay"
-       
-    }
+    // laxmeepay {
+    //     dimension "default"
+    //     applicationIdSuffix ".laxmeepay"
+    //     versionName "1.0.1"
+    //     versionCode 101
+    // }
 
     nkpay {
         dimension "default"
         applicationIdSuffix ".nkpay"
-        
+        versionName "1.0.2"
+        versionCode 104
     }
 }
 

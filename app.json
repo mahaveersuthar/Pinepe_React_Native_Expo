@@ -2,7 +2,7 @@
   "expo": {
     "name": "pinepe",
     "slug": "pinepe",
-    "version": "1.0.0",
+    "version": "1.0.4",
     "orientation": "portrait",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",

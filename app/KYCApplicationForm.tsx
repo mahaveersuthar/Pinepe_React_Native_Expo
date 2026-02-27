@@ -5,7 +5,7 @@ import CustomInput from "@/components/ui/CustomInput";
 import { theme } from "@/theme";
 import { CheckCircle2, User, MapPin, FileText, Briefcase, UploadCloud, CreditCard, Fingerprint, Phone, Mail } from "lucide-react-native";
 import React, { useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, Switch } from "react-native";
 import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from "expo-secure-store";
 import Toast from "react-native-toast-message";
@@ -15,7 +15,7 @@ import { businessTypes } from "@/utils/businessTypesData";
 import { apiClient } from "@/api/api.client";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CustomDropdown3 from "@/components/ui/CustomDropdwon3";
-import { DropdownItem } from "@/components/ui/CustomDropdown";
+import CustomDropdown, { DropdownItem } from "@/components/ui/CustomDropdown";
 
 type Props = {
     onKycSubmitted?: () => void;
@@ -34,7 +34,7 @@ interface KYCFormSchema {
     // Business Details
     business_name: string;
     business_type: string;
-    is_GST_registered: "Yes" | "No" | "";
+    is_GST_registered: boolean;
     GST_number: string;
 
     // Address
@@ -90,7 +90,7 @@ const UploadBtn = ({ label, fileData, onPress, error }: any) => {
     const isUploaded = !!(fileData && fileData?.uri);
     return (
         <View style={{}}>
-            <Text style={[styles.label, {marginBottom: 8}]}>{label}</Text>
+            <Text style={[styles.label, { marginBottom: 8 }]}>{label}</Text>
             <TouchableOpacity
                 style={[styles.uploadBox, isUploaded && styles.uploadSuccessBox]}
                 onPress={onPress}
@@ -130,7 +130,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
         aadhar_no: "",
         business_name: "",
         business_type: "",
-        is_GST_registered: "",
+        is_GST_registered: false,
         GST_number: "",
         permanent_address: "",
         state: "",
@@ -202,11 +202,8 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
             case "business_type":
                 if (!form.business_type) errorMessage = "Please select business type";
                 break;
-            case "is_GST_registered":
-                if (!form.is_GST_registered) errorMessage = "Please select GST availability";
-                break;
             case "GST_number":
-                if (form.is_GST_registered === "Yes" && !form.GST_number.trim()) {
+                if (form.is_GST_registered === true && !form.GST_number.trim()) {
                     errorMessage = "GST number is required";
                 } else if (form.GST_number && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(form.GST_number)) {
                     errorMessage = "Enter a valid GST number";
@@ -234,7 +231,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    const update = (key: keyof KYCFormSchema, value: string) => {
+    const update = (key: keyof KYCFormSchema, value: any) => {
         setForm((prev) => ({ ...prev, [key]: value }));
 
         // Clear error when field is updated
@@ -324,7 +321,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
         });
 
         // Validate GST number if applicable
-        if (form.is_GST_registered === "Yes") {
+        if (form.is_GST_registered === true) {
             const gstValid = validatePersonalField("GST_number");
             if (!gstValid) isValid = false;
         }
@@ -407,8 +404,8 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
             // Business Details
             formData.append("business_name", form.business_name);
             formData.append("business_type", form.business_type);
-            formData.append("gst", form.is_GST_registered);
-            if (form.is_GST_registered === "Yes") {
+            formData.append("gst", form.is_GST_registered===true?"Yes":"No");
+            if (form.is_GST_registered === true) {
                 formData.append("GST_number", form.GST_number);
             }
 
@@ -512,31 +509,31 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
                                 </View>
                                 <View style={styles.divider} />
 
-                                <View style={{rowGap:8,marginTop:16}}>
+                                <View style={{ rowGap: 8, marginTop: 16 }}>
                                     <UploadBtn
-                                    label="Aadhaar Front"
-                                    fileData={form.aadhar_front}
-                                    onPress={() => handleUpload('aadhar_front', 'Aadhaar Front')}
-                                    error={errors.aadhar_front}
-                                />
-                                <UploadBtn
-                                    label="Aadhaar Back"
-                                    fileData={form.aadhar_back}
-                                    onPress={() => handleUpload('aadhar_back', 'Aadhaar Back')}
-                                    error={errors.aadhar_back}
-                                />
-                                <UploadBtn
-                                    label="PAN Card"
-                                    fileData={form.pan_card}
-                                    onPress={() => handleUpload('pan_card', 'PAN Card')}
-                                    error={errors.pan_card}
-                                />
-                                <UploadBtn
-                                    label="Passport Size Photo"
-                                    fileData={form.passport_size_photo}
-                                    onPress={() => handleUpload('passport_size_photo', 'Passport Size Photo')}
-                                    error={errors.passport_size_photo}
-                                />
+                                        label="Aadhaar Front"
+                                        fileData={form.aadhar_front}
+                                        onPress={() => handleUpload('aadhar_front', 'Aadhaar Front')}
+                                        error={errors.aadhar_front}
+                                    />
+                                    <UploadBtn
+                                        label="Aadhaar Back"
+                                        fileData={form.aadhar_back}
+                                        onPress={() => handleUpload('aadhar_back', 'Aadhaar Back')}
+                                        error={errors.aadhar_back}
+                                    />
+                                    <UploadBtn
+                                        label="PAN Card"
+                                        fileData={form.pan_card}
+                                        onPress={() => handleUpload('pan_card', 'PAN Card')}
+                                        error={errors.pan_card}
+                                    />
+                                    <UploadBtn
+                                        label="Passport Size Photo"
+                                        fileData={form.passport_size_photo}
+                                        onPress={() => handleUpload('passport_size_photo', 'Passport Size Photo')}
+                                        error={errors.passport_size_photo}
+                                    />
                                 </View>
                             </View>
                         </AnimatedCard>
@@ -701,25 +698,36 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
                                         }
                                     }}
                                     error={touched.business_type ? errors.business_type : undefined}
-                                    
+
                                 />
 
+                                <View style={{ marginTop: 12 }}>
+                                    <View
+                                        style={{
+                                            flexDirection: "row",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 16, fontWeight: "500" }}>
+                                            GST Registered?
+                                        </Text>
 
-                                <CustomDropdown3
-                                    label="GST Registered?"
-                                    items={GST_OPTIONS}
-                                    value={form.is_GST_registered || null}
-                                    onSelect={(val) => {
-                                        if (val) {
-                                            update("is_GST_registered", val.value);
-                                            handleBlur("is_GST_registered");
-                                        }
-                                    }}
-                                    error={touched.is_GST_registered ? errors.is_GST_registered : undefined}
-                                    
-                                />
+                                        <Switch
+                                            value={form.is_GST_registered}
+                                            onValueChange={(val) => {
+                                                update("is_GST_registered", val);
+                                                handleBlur("is_GST_registered");
+                                            }}
+                                            trackColor={{ false: "#d1d5db", true: "#22c55e" }}
+                                            thumbColor={form.is_GST_registered ? "#16a34a" : "#f4f3f4"}
+                                        />
+                                    </View>
 
-                                {form.is_GST_registered === "Yes" && (
+                                   
+                                </View>
+
+                                {form.is_GST_registered === true && (
                                     <CustomInput
                                         label="GST Number"
                                         placeholder="Enter gst number"
@@ -775,7 +783,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
                                         }
                                     }}
                                     error={touched.state ? errors.state : undefined}
-                                   
+
                                 />
 
                                 <CustomDropdown3
@@ -791,7 +799,7 @@ const KYCApplicationForm = ({ onKycSubmitted }: Props) => {
                                         }
                                     }}
                                     error={touched.city ? errors.city : undefined}
-                                   
+
                                 />
 
                                 <CustomInput

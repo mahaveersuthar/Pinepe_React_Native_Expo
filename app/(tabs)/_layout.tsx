@@ -9,7 +9,6 @@ import { useBranding } from '@/context/BrandingContext';
 import { getLatLong } from '@/utils/location';
 import { getKycStatusApi } from '../../api/kyc.api';
 import { useAuth } from '@/context/AuthContext';
-import * as Application from 'expo-application';
 import { logoutApi } from '@/api/auth.api';
 import KYCApplicationForm from '../KYCApplicationForm';
 import { AnimatedCard } from '@/components/animated/AnimatedCard';
@@ -18,6 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { getApkVersion } from '@/api/apk.api';
 import UpdateNotificationCard from '../ApkDownloadScreen';
+import * as Application from 'expo-application';
+import { getApiHeaders } from '@/api/api.header';
 
 
 
@@ -26,11 +27,12 @@ export default function TabLayout() {
   type KycStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
   const [kycStatus, setKycStatus] = useState<KycStatus>("NOT_SUBMITTED");
   const [kycLoading, setKycLoading] = useState(true);
-  const appVersion = Constants.expoConfig?.version;
+  const appVersion = Application.nativeApplicationVersion;
   const [apkVersion,setApkVersion]=useState("");
   const [apkUrl,setApkUrl]=useState("");
   const { signOut, hasMPIN } = useAuth();
   const [versionLoading,setVersionLoading]=useState(false)
+  const domainName=getApiHeaders().domain;
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -76,8 +78,9 @@ export default function TabLayout() {
   };
 
   const getApkVersionApi = async () => {
+    console.log("domain name ",domainName)
     const location = await getLatLong();
-    console.log("app version via expo",appVersion)
+    console.log("app version from android",appVersion)
 
     // ❌ Block if location missing
     if (!location) {

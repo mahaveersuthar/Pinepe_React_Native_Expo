@@ -298,7 +298,7 @@ export default function HomeScreen() {
        
         <View style={styles.headerContent}>
            <View style={{flexDirection:'row',columnGap:8}}>
-            <Menu size={32} color="#fff" />
+           
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.userName}>

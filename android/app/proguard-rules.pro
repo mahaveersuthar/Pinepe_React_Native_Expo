@@ -13,4 +13,6 @@
 
 # Add any project specific keep options here:
 
--keep class com.paysprint.onboardinglib.*{ ; }
+# -keep class com.paysprint.onboardinglib.*{ ; }
+-keep class com.paysprint.onboardinglib.** { *; }
+
