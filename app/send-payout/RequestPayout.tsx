@@ -2,7 +2,7 @@ import CustomDropdown from '@/components/ui/CustomDropdown'
 import CustomInput from '@/components/ui/CustomInput'
 import { theme } from '@/theme'
 import { getLatLong } from '@/utils/location'
-import { RotateCcw, Search, Send, User } from 'lucide-react-native'
+import { Plus, RotateCcw, Search, Send, User } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native'
 import * as SecureStore from "expo-secure-store";
@@ -11,7 +11,7 @@ import { useBranding } from '@/context/BrandingContext';
 import { doPayoutTransferApi, getActiveRecipientsApi, getPaymentMethodsApi } from '../../api/payout.api'
 import Toast from 'react-native-toast-message'
 import { getProfileApi } from '../../api/profile.api'
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 
 interface BeneficiaryData {
     id: number;
@@ -302,7 +302,25 @@ const RequestPayout = () => {
     }, []);
     return (
         <View style={{ flex: 1, padding: 16 }}>
-            <Text style={{ fontSize: 20, fontWeight: "600" }}>{heading ? heading : "Send Payout Amount"}</Text>
+           <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+             <Text style={{ fontSize: 20, fontWeight: "600" }}>{heading ? heading : "Send Payout Amount"}</Text>
+             <TouchableOpacity
+                    style={{
+                        backgroundColor: theme.colors.primary[500],
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 8,
+                        paddingHorizontal: 14,
+                        borderRadius: 20,
+                        gap: 6,
+                    }}
+                    activeOpacity={0.7}
+                    onPress={() => { router.push("/manage-recipients/AddRecipients") }}
+                >
+                    <Plus size={16} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600' }}>Add Recipients</Text>
+                </TouchableOpacity>
+           </View>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === "ios" ? "padding" : "height"}

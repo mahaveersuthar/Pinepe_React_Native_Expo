@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ===================== -->
-    <!-- Main App Theme - MaterialComponents (Required for BankIT SDK) -->
-    <!-- ===================== -->
+    
     <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary colors - Add these to colors.xml if missing -->
         <item name="colorPrimary">@color/colorPrimary</item>
@@ -32,10 +30,7 @@
         <item name="materialButtonStyle">@style/Widget.MaterialComponents.Button</item>
         <item name="textInputStyle">@style/Widget.MaterialComponents.TextInputLayout.FilledBox</item>
     </style>
-
-    <!-- ===================== -->
-    <!-- Splash Theme (NO-OP) -->
-    <!-- ===================== -->
+    
     <style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@android:color/transparent</item>
         <item name="windowSplashScreenAnimatedIcon">@null</item>

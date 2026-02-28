@@ -33,7 +33,7 @@
     "expo-location": "^19.0.8",
     "expo-router": "~6.0.8",
     "expo-secure-store": "~15.0.8",
-    "expo-splash-screen": "~31.0.13",
+    "expo-splash-screen": "^55.0.10",
     "expo-status-bar": "~3.0.8",
     "lucide-react-native": "^0.544.0",
     "react": "19.1.0",

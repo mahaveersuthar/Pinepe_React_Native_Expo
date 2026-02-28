@@ -37,7 +37,7 @@ export const createRecipient = async (token: string, data: any, location: any) =
 
 export const uploadRecipientDocs = async (token: string, formData: FormData, location: any) => {
   return apiClient({
-    endpoint: `/paysprint/payout/upload-document`,
+    endpoint: `/payout/upload-document`,
     method: "POST",
     body: formData,
     headers: {
@@ -56,3 +56,18 @@ export const getPaysprintBanks = async (token: string) => {
     headers: { Authorization: `Bearer ${token}` },
   });
 };
+
+export const getAccountStatus =async(token:string,location: any,beneid:string)=>{
+  return apiClient({
+    endpoint:`/payout/account-status`,
+    method:"POST",
+    body:{beneid:beneid},
+    headers:{
+      Authorization: `Bearer ${token}`,
+     latitude: location.latitude.toString(),
+      longitude: location.longitude.toString(),
+    
+    }
+    
+  })
+}

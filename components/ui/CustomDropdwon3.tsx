@@ -54,6 +54,7 @@ const CustomDropdown3: React.FC<CustomDropdownProps> = ({
       {label && <Text style={styles.label}>{label}</Text>}
 
       {/* INPUT LOOKALIKE */}
+      {/* INPUT LOOKALIKE */}
       <TouchableOpacity
         activeOpacity={0.8}
         disabled={disabled}
@@ -68,19 +69,29 @@ const CustomDropdown3: React.FC<CustomDropdownProps> = ({
           disabled && styles.inputDisabled,
         ]}
       >
+        {/* Wrap the text in a View or ensure the Text itself has flex: 1 */}
         <Text
+          numberOfLines={1}
+          ellipsizeMode="tail"
           style={[
             styles.inputText,
             !value && styles.placeholderText,
+            {
+              flex: 1,           // This forces the text to shrink to fit available space
+              flexShrink: 1,     // Additional insurance for Android
+              marginRight: 10    // Creates a gap so text doesn't touch the arrow
+            }
           ]}
         >
           {selectedLabel}
         </Text>
 
-        <ChevronDown
-          size={20}
-          color={focused ? theme.colors.primary[500] : "#6B7280"}
-        />
+        <View style={styles.iconWrapper}>
+          <ChevronDown
+            size={20}
+            color={focused ? theme.colors.primary[500] : "#6B7280"}
+          />
+        </View>
       </TouchableOpacity>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
@@ -158,13 +169,20 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "space-between", // Keeps text left and arrow right
     backgroundColor: "#FFF",
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.1)",
     minHeight: 48,
     paddingHorizontal: 12,
+    width: '100%', // Crucial: ensure it doesn't try to grow wider than parent
+    overflow: 'hidden', // Keeps children inside the borders
+  },
+  iconWrapper: {
+    flexShrink: 0, // Prevents the arrow itself from being squished
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputFocused: {
     borderColor: theme.colors.primary[500],

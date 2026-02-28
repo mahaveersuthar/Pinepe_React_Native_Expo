@@ -24,7 +24,11 @@ import {
     Building2,
     CheckCircle2,
     User,
-    ShieldCheck
+    ShieldCheck,
+    Landmark,
+    Clock,
+    RefreshCw,
+    Triangle
 } from "lucide-react-native";
 import * as SecureStore from "expo-secure-store";
 import { getLatLong } from "@/utils/location";
@@ -32,10 +36,11 @@ import { theme } from "@/theme";
 import { AnimatedCard } from "@/components/animated/AnimatedCard";
 import { router } from "expo-router";
 import FundCardSkeleton from "@/components/shimmer/FundCardSkeleton";
-import { getRecipients } from "@/api/recipients.api";
+import { getAccountStatus, getRecipients } from "@/api/recipients.api";
+import { useFocusEffect } from "expo-router";
+import Toast from "react-native-toast-message";
 
-// Assuming your base URL for images
-const IMAGE_BASE_URL = "https://your-api-domain.com/storage/";
+
 
 const ManageRecipients = () => {
     // --- States ---
@@ -44,6 +49,72 @@ const ManageRecipients = () => {
     const [recipients, setRecipients] = useState<any[]>([]);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+    const fetchAccountStatus = async (beneid: string) => {
+        try {
+            setLoading(true);
+            const location = await getLatLong();
+
+            if (!userToken.current) {
+                userToken.current = await SecureStore.getItemAsync("userToken");
+            }
+
+            if (!location || !userToken.current) return;
+
+          const response=  await getAccountStatus(userToken.current, location, beneid);
+
+            if (!response?.success) {
+              Toast.show({
+                type:'error',
+                text1:response?.message || "failed to fetch status!"
+              })
+                return;
+            }
+            
+            // console.log("response",response)
+            if(response.data.accountstatus==2){
+                Toast.show({
+                    type:"error",
+                    text1:"please upload correct document"
+                })
+            }
+            else{
+                Toast.show({
+                    type:'info',
+                    text1:response?.data?.status_label || "something went wrong"
+                })
+                
+            }
+           
+
+           fetchRecipientsData();
+                    
+         
+        } catch (err) {
+            console.error("Account status error", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getStatusUI = (item: any) => {
+        if (item.is_paysprint_verified) {
+            return {
+                label: "ACTIVATED",
+                icon: <CheckCircle2 size={12} color={theme.colors.status.approved.main} />,
+                color: theme.colors.status.approved.main,
+                bg: theme.colors.status.approved.bg,
+                border: theme.colors.status.approved.border,
+            };
+        }
+
+        return {
+            label: "PENDING",
+            icon: <Clock size={12} color={theme.colors.status.pending.main} />,
+            color: theme.colors.status.pending.main,
+            bg: theme.colors.status.pending.bg,
+            border: theme.colors.status.pending.border,
+        };
+    };
     // --- API Logic ---
     const fetchRecipientsData = async () => {
         try {
@@ -72,37 +143,63 @@ const ManageRecipients = () => {
         }
     };
 
-    useEffect(() => {
-        fetchRecipientsData();
-    }, []);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchRecipientsData();
+        }, [])
+    );
 
     // --- Render Helpers ---
-    const renderRecipientCard = ({ item, index }: { item: any, index: number }) => {
-        // Determine status colors from your theme
-        const statusKey = item.status.toLowerCase() as keyof typeof theme.colors.status;
-        const config = theme.colors.status[statusKey] || theme.colors.status.pending;
+    const renderRecipientCard = ({ item, index }: { item: any; index: number }) => {
+        const statusUI = getStatusUI(item);
 
         return (
             <AnimatedCard style={styles.card} delay={index * 50}>
-                {/* 1. Header: Bank Name & Verification Status */}
+                {/* Header */}
                 <View style={styles.cardHeader}>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.bankLabel}>{item.bank_name}</Text>
                         <Text style={styles.holderName}>{item.account_holder_name}</Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: config.bg, borderColor: config.border }]}>
-                        {item.is_paysprint_verified && (
-                            <ShieldCheck size={12} color={config.main} style={{ marginRight: 4 }} />
+
+                    <View
+                        style={[
+                            styles.statusBadge,
+                            { backgroundColor: statusUI.bg, borderColor: statusUI.border },
+                        ]}
+                    >
+
+
+                        {/* 🔄 Refresh when pending */}
+                        {!item.is_paysprint_verified ? (
+                            <TouchableOpacity
+                                onPress={() => fetchAccountStatus(item.bene_id)}
+                                style={{ flexDirection: "row", alignItems: "center", gap: 4, marginLeft: 6 }}
+                            >
+                                <Text style={{ color: statusUI.color, fontSize: 10, fontWeight: "700" }}>
+                                    PENDING
+                                </Text>
+                                <RefreshCw size={12} color={statusUI.color} />
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginLeft: 6 }}>
+                                <CheckCircle2 size={12} color={theme.colors.status.approved.main} />
+                                <Text
+                                    style={{
+                                        color: theme.colors.status.approved.main,
+                                        fontSize: 10,
+                                        fontWeight: "700",
+                                    }}
+                                >
+                                    ACTIVATED
+                                </Text>
+                            </View>
                         )}
-                        <Text style={[styles.statusText, { color: config.main }]}>
-                            {item.status.toUpperCase()}
-                        </Text>
                     </View>
                 </View>
 
                 <View style={styles.divider} />
 
-                {/* 2. Body: Account Details */}
+                {/* Details */}
                 <View style={styles.detailsGrid}>
                     <DetailRow
                         icon={<CreditCard size={14} color={theme.colors.text.tertiary} />}
@@ -114,6 +211,16 @@ const ManageRecipients = () => {
                         label="IFSC Code"
                         value={item.ifsc_code}
                     />
+                    <DetailRow
+                        icon={<Landmark size={14} color={theme.colors.text.tertiary} />}
+                        label="Bank Name"
+                        value={item.bank_name}
+                    />
+                    <DetailRow
+                        icon={<Triangle size={14} color={theme.colors.text.tertiary} />}
+                        label="Status"
+                        value={item.status}
+                    />
                 </View>
             </AnimatedCard>
         );
@@ -124,7 +231,7 @@ const ManageRecipients = () => {
             <StatusBar barStyle="light-content" />
 
             {/* Header Section */}
-            <View style={[styles.header,{marginTop:16}]}>
+            <View style={[styles.header, { marginTop: 16 }]}>
                 <View>
                     <Text style={styles.headerTitle}></Text>
 
