@@ -7,6 +7,10 @@ export default function DMTLayout() {
         name="index"
         options={{ title: "DMT" }}
       />
+      <Stack.Screen
+        name="express-dmt"
+        options={{ title: "Express DMT" }}
+      />
     </Stack>
   );
 }

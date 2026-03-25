@@ -233,3 +233,38 @@ export const deleteRecipientApi = async (options: {
     },
   });
 };
+
+
+export const expressTransactionApi = async (options: {
+  token: string;
+  latitude: string;
+  longitude: string;
+  transferMode: string;
+  name: string;
+  phone: string;
+  email: string;
+  bank_account: string;
+  ifsc: string;
+  amount: number;
+  bank_name: string;
+}) => {
+  return apiClient({
+    endpoint: "/express/do-transaction",
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${options.token}`,
+      latitude: options.latitude,
+      longitude: options.longitude,
+    },
+    body: {
+      transferMode: options.transferMode,
+      name: options.name,
+      phone: options.phone,
+      email: options.email,
+      bank_account: options.bank_account,
+      ifsc: options.ifsc,
+      amount: options.amount,
+      bank_name: options.bank_name,
+    },
+  });
+};

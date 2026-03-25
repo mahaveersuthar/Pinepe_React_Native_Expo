@@ -103,29 +103,34 @@ android {
     pinepe {
         dimension "default"
         applicationIdSuffix ".pinepe"
-        versionName "1.0.8"
-        versionCode 108
+        versionName "1.0.11"
+        versionCode 109
     }
 
     cashpe {
         dimension "default"
         applicationIdSuffix ".cashpe"
-        versionName "1.0.7"
-        versionCode 107
+        versionName "1.0.11"
+        versionCode 108
     }
-
-    // laxmeepay {
-    //     dimension "default"
-    //     applicationIdSuffix ".laxmeepay"
-    //     versionName "1.0.1"
-    //     versionCode 101
-    // }
 
     nkpay {
         dimension "default"
         applicationIdSuffix ".nkpay"
-        versionName "1.0.3"
+        versionName "1.0.8"
         versionCode 104
+    }
+    onepe {
+        dimension "default"
+        applicationIdSuffix ".onepe"
+        versionName "1.0.4"
+        versionCode 101
+    }
+    loksevapay {
+        dimension "default"
+        applicationIdSuffix ".loksevapay"
+        versionName "1.0.4"
+        versionCode 101
     }
 }
 

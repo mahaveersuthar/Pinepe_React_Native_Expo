@@ -8,6 +8,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import android.content.ComponentName
 
 class MantraModule(
     private val reactContext: ReactApplicationContext
@@ -69,7 +70,7 @@ class MantraModule(
     override fun getName(): String = "MantraRD"
 
    @ReactMethod
-fun captureFingerprint(wadh: String?, promise: Promise) { // Add wadh parameter
+fun captureFingerprint(deviceType:String,wadh: String?, promise: Promise) { // Add wadh parameter
 
     if (mantraPromise != null) {
         promise.reject("IN_PROGRESS", "Fingerprint scan already in progress")
@@ -93,11 +94,22 @@ fun captureFingerprint(wadh: String?, promise: Promise) { // Add wadh parameter
     <Uses fName="true" fType="2"/>
 </PidOptions>""".trimIndent()
 
-    val intent = Intent("in.gov.uidai.rdservice.fp.CAPTURE").apply {
-        putExtra("PID_OPTIONS", pidOptions)
+   val intent = Intent("in.gov.uidai.rdservice.fp.CAPTURE")
+    
+    // Direct the intent to the specific manufacturer's RD Service app
+    if (deviceType.equals("Morpho", ignoreCase = true)) {
+        intent.setPackage("com.scl.rdservice") // Morpho package
+    } else {
+        intent.setPackage("com.mantra.rdservice") // Mantra package
     }
 
-    Log.d(TAG, "== LAUNCHING MANTRA RD SERVICE WITH WADH: $wadh ==")
-    activity.startActivityForResult(intent, MANTRA_REQUEST_CODE)
+    intent.putExtra("PID_OPTIONS", pidOptions)
+
+    try {
+        activity.startActivityForResult(intent, MANTRA_REQUEST_CODE)
+    } catch (e: Exception) {
+        mantraPromise = null
+        promise.reject("DEVICE_NOT_FOUND", "${deviceType} RD Service app not installed")
+    }
 }
 }

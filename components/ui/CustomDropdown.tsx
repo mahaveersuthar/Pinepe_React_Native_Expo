@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import DropDownPicker from "react-native-dropdown-picker";
+import DropDownPicker, { ListModeType } from "react-native-dropdown-picker";
 import { theme } from "@/theme";
 
 export type DropdownItem = {
@@ -10,6 +10,7 @@ export type DropdownItem = {
 
 interface AppDropdownProps {
   label?: string;
+  error?: string;
   open: boolean;
   value: string | null;
   items: DropdownItem[];
@@ -20,12 +21,26 @@ interface AppDropdownProps {
   disabled?: boolean;
   searchable?: boolean;
   zIndex?: number;
+  listMode?: ListModeType;
+  // --- FIX: Added onClose to the interface ---
+  onClose?: () => void;
 }
 
 const CustomDropdown: React.FC<AppDropdownProps> = ({
-  label, open, value, items, setOpen, setValue,
-  placeholder = "Select option", loading = false,
-  disabled = false, searchable = false, zIndex = 0,
+  label,
+  error,
+  open,
+  value,
+  items,
+  setOpen,
+  setValue,
+  placeholder = "Select option",
+  loading = false,
+  disabled = false,
+  searchable = false,
+  zIndex = 0,
+  listMode = "SCROLLVIEW",
+  onClose, // --- FIX: Destructured onClose ---
 }) => {
   return (
     <View style={{ zIndex }}>
@@ -37,30 +52,37 @@ const CustomDropdown: React.FC<AppDropdownProps> = ({
         items={items}
         setOpen={setOpen}
         setValue={setValue}
+        onClose={onClose} // --- FIX: Passed onClose to DropDownPicker ---
         placeholder={placeholder}
         loading={loading}
         disabled={disabled}
         searchable={searchable}
-        listMode="SCROLLVIEW"
+        listMode={listMode}
         dropDownDirection="BOTTOM"
         maxHeight={250}
-        // Matching styles
-        style={styles.dropdown}
-        dropDownContainerStyle={styles.dropdownContainer}
+        style={[
+          styles.dropdown,
+          error ? styles.inputError : null,
+          open && !error ? styles.inputFocused : null,
+        ]}
+        dropDownContainerStyle={[
+          styles.dropdownContainer,
+          error ? styles.inputError : null,
+        ]}
         placeholderStyle={{ color: theme.colors.text.secondary, fontSize: 15 }}
         labelStyle={{ color: theme.colors.text.primary, fontSize: 15 }}
-        // --- ADD THESE PROPS ---
         disabledItemContainerStyle={{
           opacity: 0.5,
-          backgroundColor: '#F3F4F6', // Light grey background for disabled rows
+          backgroundColor: "#F3F4F6",
         }}
         disabledItemLabelStyle={{
-          color: '#9CA3AF', // Grey text for disabled labels
+          color: "#9CA3AF",
         }}
-        // -----------------------
         scrollViewProps={{ nestedScrollEnabled: true }}
         zIndex={zIndex}
       />
+
+      {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 };
@@ -74,18 +96,34 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   dropdown: {
-    backgroundColor: theme.colors.background.dark || "#FFF", // Consistent BG
-    borderRadius: 14, // Consistent Radius
-    borderColor: "rgba(0,0,0,0.1)", // Subtle border
-    minHeight: 55, // Consistent Height
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+    minHeight: 55,
     paddingHorizontal: 12,
   },
   dropdownContainer: {
-    backgroundColor: theme.colors.background.dark || "#FFF",
+    backgroundColor: "#FFF",
     borderColor: "rgba(0,0,0,0.1)",
     borderRadius: 14,
     elevation: 5,
-  },			
+  },
+  inputError: {
+    borderColor: "#EF4444",
+    borderWidth: 1.5,
+  },
+  inputFocused: {
+    borderColor: theme.colors.primary[500],
+    borderWidth: 2,
+  },
+  errorText: {
+    color: "#EF4444",
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
 });
 
-export default CustomDropdown
+export default CustomDropdown;

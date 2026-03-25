@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, NativeModules, TextInput, Alert } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, NativeModules, TextInput, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { theme } from "@/theme";
 import OnboardingForm from "./OnboardingForm";
@@ -169,6 +169,7 @@ export default function AepsScreen() {
 
       // Check if response contains error status A0001 (not onboarded)
       if (res?.status === "A0001") {
+        
         setOnboardingRequired(true);
         setOnboardingMessage(res.message || "Agent is not onboarded with us.");
         setOnboardingStatus(null);
@@ -182,13 +183,14 @@ export default function AepsScreen() {
 
       // Check if response status is "00" (success)
       if (res?.status === "00") {
-        setOnboardingStatus(res.data);
+         
+        setOnboardingStatus(res);
         Toast.show({
           type: "success",
           text1: "Onboarding Status",
-          text2: `ICICI: ${res.data.icicionboardstatus === "1" ? "Onboarded" : "Pending"}, NSDL: ${res.data.NSDLOnboardingFlag === "1" ? "Onboarded" : "Pending"}`,
+          text2: `ICICI: ${res?.icicionboardstatus === "1" ? "Onboarded" : "Pending"}, NSDL: ${res.NSDLOnboardingFlag === "1" ? "Onboarded" : "Pending"}`,
         });
-      } else if (res && !res.data) {
+      } else if (res) {
         // Handle case where response exists but no data property
         console.log("Response without data property:", res);
         // If the response itself is the status object
@@ -798,6 +800,10 @@ export default function AepsScreen() {
   if (kycStatus === "Approved") {
     return (
       <View style={styles.mainContainer}>
+       <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+  >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -862,7 +868,7 @@ export default function AepsScreen() {
             </View>
 
             {/* Onboarding Status Display */}
-            {renderOnboardingStatus()}
+            {/* {renderOnboardingStatus()} */}
 
             {/* Conditional Forms based on selected pipe */}
             {renderIciciForm()}
@@ -894,6 +900,7 @@ export default function AepsScreen() {
             <Text style={styles.agentCodeText}>Agent Code: {agentCode}</Text>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
 
         {/* Transaction Result Modal */}
         {renderTransactionResult()}

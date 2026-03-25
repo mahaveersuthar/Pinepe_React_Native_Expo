@@ -3,5 +3,6 @@ export const VALID_ROUTES = [
   "/dmt",
   "/recharge",
   "/send-payout",
-  "/admin/aeps-bank-5"
+  "/admin/aeps-bank-5",
+  "/dmt/express-dmt",
 ];

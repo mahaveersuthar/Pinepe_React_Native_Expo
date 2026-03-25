@@ -49,11 +49,11 @@ export const BiometricScanner: React.FC<BiometricScannerProps> = ({
   }, [reset]);
 
   const handleStartScan = async () => {
-    if (selectedDevice !== "Mantra") {
-      setHasData(false);
-      setScanError("Morpho device is not supported yet");
-      return;
-    }
+    // if (selectedDevice !== "Mantra") {
+    //   setHasData(false);
+    //   setScanError("Morpho device is not supported yet");
+    //   return;
+    // }
 
     try {
       setIsScanning(true);
@@ -65,7 +65,7 @@ export const BiometricScanner: React.FC<BiometricScannerProps> = ({
       }
 
 
-      const pidXml: string = await MantraRD.captureFingerprint( wadh|| "");
+      const pidXml: string = await MantraRD.captureFingerprint(selectedDevice, wadh|| "");
 
       if (!pidXml || !pidXml.includes("<PidData")) {
         throw new Error("Invalid biometric data received");

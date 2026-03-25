@@ -1,5 +1,3 @@
-// src/api/auth.api.ts
-
 import { apiClient } from "./api.client";
 
 type LoginPayload = {

@@ -46,6 +46,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return 'loksevapay.in';
       case 'nkpay':
         return 'nkpay.in';
+      case 'onepe':
+        return 'onepe.co.in';
       default:
         // Default fallback
         return 'app.pinepe.in';
@@ -57,26 +59,26 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       try {
         const appName = (Application.applicationName || '').toString().trim();
         // const appName = "cashpe"; 
-        
+
         // 2. Resolve Domain immediately via switch case
         const resolvedDomain = getDomainFromAppName(appName);
         setDomainName(resolvedDomain);
         // setDomainName("cashpe.net");
-        console.log("domain",resolvedDomain)
+        console.log("domain", resolvedDomain)
 
         // 3. Update global API headers so subsequent calls are authorized/contextualized
         setApiHeaders({
           domain: resolvedDomain,
         });
 
-        console.log("domain",resolvedDomain)
+        console.log("domain", resolvedDomain)
 
         // 4. Fetch the specific Whitelabel configuration for this domain
         // Note: We pass the resolvedDomain in the 'domain' header
         const response = await fetch(TENANTS_API, {
           headers: {
             'Accept': 'application/json',
-            'domain': resolvedDomain 
+            'domain': resolvedDomain
           }
         });
 
@@ -85,13 +87,13 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (json.success && json.data) {
           // The API returns { theme: {...}, plans: [...] } in json.data
           const themeData = json.data.theme;
-          
+
           // Set the full tenant object (includes theme and plans)
           setTenant(json.data);
 
           // 5. Determine the best Logo (Priority: Mobile Logo > Standard Logo)
           const finalLogo = themeData?.mobile_logo || themeData?.logo;
-          
+
           if (finalLogo) {
             setLogoUrl(finalLogo);
             // Optimization: Prefetch image into cache

@@ -1,8 +1,5 @@
 import React, { useEffect } from "react";
 import { View, StyleSheet, Image } from "react-native";
-import Constants from "expo-constants";
-import { useBranding } from '@/context/BrandingContext';
-import * as SplashScreen from 'expo-splash-screen';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,22 +7,19 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { theme } from "@/theme";
+import { useBranding } from '@/context/BrandingContext';
+import * as SplashScreen from "expo-splash-screen";
+
 
 interface SplashScreenProps {
   onComplete?: () => void;
 }
-
-
 
 export default function SplashScreenComponent({ onComplete }: SplashScreenProps) {
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    // Hide native splash immediately
-    SplashScreen.hideAsync();
-
     scale.value = withSequence(
       withSpring(1.2, { damping: 10 }),
       withSpring(1, { damping: 15 })
@@ -33,24 +27,39 @@ export default function SplashScreenComponent({ onComplete }: SplashScreenProps)
 
     opacity.value = withTiming(1, { duration: 800 });
 
-    if (onComplete) {
-      const timer = setTimeout(onComplete, 3000);
-      return () => clearTimeout(timer);
-    }
+    const timer = setTimeout(() => {
+      onComplete?.();
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, [onComplete]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
     opacity: opacity.value,
   }));
+  
 
   const { logoUrl } = useBranding();
-  const source = { uri: logoUrl }
+
+  useEffect(() => {
+    async function hideNative() {
+    
+      await SplashScreen.hideAsync();
+    }
+    hideNative();
+  }, []);
 
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.content, animatedStyle]}>
-        <Image source={source as any} style={styles.logo} resizeMode="contain" />
+        {logoUrl && (
+          <Image
+            source={{ uri: logoUrl }}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        )}
       </Animated.View>
     </View>
   );
@@ -59,7 +68,7 @@ export default function SplashScreenComponent({ onComplete }: SplashScreenProps)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF", // ✅ WHITE BG
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
   },

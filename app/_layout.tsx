@@ -6,6 +6,9 @@ import { useFrameworkReady } from "@/hooks/useFrameworkReady";
 import { BrandingProvider } from '@/context/BrandingContext';
 import { ThemeProvider } from "@/context/ThemeProvider";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as SplashScreen from "expo-splash-screen";
+
+SplashScreen.preventAutoHideAsync();
 
 const toastConfig = {
   success: (props: any) => (

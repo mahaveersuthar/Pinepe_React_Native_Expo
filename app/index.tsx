@@ -5,6 +5,7 @@ import { secureStorage } from "@/services/secureStorage";
 import { useAuth } from "@/context/AuthContext";
 import SplashScreen from "@/app/splash";
 
+
 export default function Index() {
   const { loading: authLoading, isAuthenticated } = useAuth();
   const [hasOpened, setHasOpened] = useState<boolean | null>(null);
@@ -14,6 +15,7 @@ export default function Index() {
   useEffect(() => {
     async function checkStatus() {
       try {
+        
         const opened = await secureStorage.getHasOpened();
         setHasOpened(!!opened);
       } catch (e) {
